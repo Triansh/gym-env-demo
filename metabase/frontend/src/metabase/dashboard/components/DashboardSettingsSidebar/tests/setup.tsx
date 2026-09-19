@@ -1,0 +1,79 @@
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import {
+  setupDashboardEndpoints,
+  setupPerformanceEndpoints,
+  setupRevisionsEndpoints,
+  setupUsersEndpoints,
+} from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
+import { createMockEntitiesState } from "__support__/store";
+import { renderWithProviders, waitForLoaderToBeRemoved } from "__support__/ui";
+import { MockDashboardContext } from "metabase/dashboard/context/mock-context";
+import { Route } from "metabase/router";
+import type { Dashboard, Settings } from "metabase-types/api";
+import {
+  createMockDashboard,
+  createMockSettings,
+  createMockTokenFeatures,
+  createMockUser,
+} from "metabase-types/api/mocks";
+import { createSampleDatabase } from "metabase-types/api/mocks/presets";
+
+import { DashboardSettingsSidebar } from "../DashboardSettingsSidebar";
+
+export interface SetupOpts {
+  dashboard?: Dashboard;
+  settings?: Settings;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+}
+
+export async function setup({
+  dashboard = createMockDashboard(),
+  settings = createMockSettings(),
+  enterprisePlugins = [],
+}: SetupOpts = {}) {
+  const setDashboardAttribute = jest.fn();
+  const onClose = jest.fn();
+
+  const currentUser = createMockUser();
+  setupDashboardEndpoints(dashboard);
+  setupUsersEndpoints([currentUser]);
+  setupRevisionsEndpoints([]);
+  setupPerformanceEndpoints([]);
+
+  const state = createMockState({
+    currentUser,
+    settings: mockSettings({
+      ...settings,
+      "token-features": createMockTokenFeatures(
+        settings["token-features"] || {},
+      ),
+    }),
+    entities: createMockEntitiesState({
+      databases: [createSampleDatabase()],
+    }),
+  });
+
+  enterprisePlugins.forEach((plugin) => {
+    setupEnterpriseOnlyPlugin(plugin);
+  });
+
+  const TestDashboardSettingsSidebar = () => (
+    <MockDashboardContext dashboard={dashboard} closeSidebar={onClose}>
+      <DashboardSettingsSidebar />
+    </MockDashboardContext>
+  );
+
+  renderWithProviders(
+    <Route path="*" element={<TestDashboardSettingsSidebar />} />,
+
+    { storeInitialState: state, withRouter: true },
+  );
+  await waitForLoaderToBeRemoved();
+
+  return {
+    setDashboardAttribute,
+    onClose,
+  };
+}

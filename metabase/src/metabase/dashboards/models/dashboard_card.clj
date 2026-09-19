@@ -1,0 +1,364 @@
+(ns metabase.dashboards.models.dashboard-card
+  (:require
+   [clojure.set :as set]
+   [medley.core :as m]
+   [metabase.dashboards.db :as dashboards.db]
+   [metabase.dashboards.schema :as dashboards.schema]
+   [metabase.lib.core :as lib]
+   [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
+   [metabase.parameters.core :as parameters]
+   [metabase.parameters.schema :as parameters.schema]
+   [metabase.queries.schema :as queries.schema]
+   [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
+
+(methodical/defmethod t2/table-name :model/DashboardCard [_model] :report_dashboardcard)
+
+(doto :model/DashboardCard
+  (derive :metabase/model)
+  (derive ::mi/read-policy.full-perms-for-perms-set)
+  (derive ::mi/write-policy.full-perms-for-perms-set)
+  (derive :hook/timestamped?)
+  (derive :hook/entity-id)
+  ;; Disabled for performance reasons, see update-dashboard-card!-call-count-test
+  #_(derive :hook/search-index))
+
+(t2/deftransforms :model/DashboardCard
+  {:parameter_mappings     parameters/transform-parameter-mappings
+   :visualization_settings mi/transform-visualization-settings
+   :inline_parameters      mi/transform-json})
+
+(defn- validate-link-card-entity-id
+  "Require the link-card entity id to be an integer before it is stored. It is used as an id when the linked
+  entity is looked up on read, so validating on write keeps a malformed value from being persisted."
+  [dashcard]
+  (when-let [id (get-in dashcard [:visualization_settings :link :entity :id])]
+    (dashboards.db/ensure-integer-link-card-id id))
+  dashcard)
+
+(defn- validate-click-behavior-target-ids
+  "Require click-behavior target ids to be integers before they are stored. They are later used as entity ids
+  (e.g. by the dependency backfill), so validating on write keeps a malformed value from being persisted."
+  [dashcard]
+  (let [viz (:visualization_settings dashcard)]
+    (doseq [cb (cons (:click_behavior viz)
+                     (map (comp :click_behavior val) (:column_settings viz)))
+            :let [id (:targetId cb)]
+            :when (some? id)]
+      (when-not (integer? id)
+        (throw (ex-info "Click behavior target id must be an integer"
+                        {:status-code 400, :id id})))))
+  dashcard)
+
+(defn- validate-dashcard-on-write
+  [dashcard]
+  (-> dashcard
+      validate-link-card-entity-id
+      validate-click-behavior-target-ids))
+
+(t2/define-before-insert :model/DashboardCard
+  [dashcard]
+  (-> (merge {:parameter_mappings     []
+              :visualization_settings {}
+              :inline_parameters      []}
+             dashcard)
+      validate-dashcard-on-write))
+
+(t2/define-before-update :model/DashboardCard
+  [dashcard]
+  (validate-dashcard-on-write dashcard))
+
+;;; Update visualizer dashboard cards in stats to have card id references instead of entity ids
+(t2/define-after-select :model/DashboardCard
+  [dashcard]
+  (if (contains? dashcard :visualization_settings)
+    (update dashcard :visualization_settings serdes/import-visualizer-settings-lenient)
+    dashcard))
+
+(declare series)
+
+;;; Return the set of permissions required to `read-or-write` this DashboardCard. If `:card` and `:series` are already
+;;; hydrated this method doesn't need to make any DB calls.
+(defmethod mi/perms-objects-set :model/DashboardCard
+  [dashcard read-or-write]
+  (let [card   (or (:card dashcard)
+                   (dashboards.db/card-query-columns (u/the-id (:card_id dashcard))))
+        series (or (:series dashcard)
+                   (series dashcard))]
+    (apply set/union (mi/perms-objects-set card read-or-write) (for [series-card series]
+                                                                 (mi/perms-objects-set series-card read-or-write)))))
+
+(defn from-parsed-json
+  "Convert a map with dashboard-card into a Toucan instance assuming it came from parsed JSON and the map keys have
+   been keywordized. This is useful if the data from a request body inside a `defendpoint` body, and you need it in the
+   same format as if it were selected from the DB with toucan. It doesn't transform the `:created_at` or `:updated_at`
+   fields, as the types of timestamp values differ by the application database driver.
+
+   For example:
+   ```
+   (= dashcard ;; from toucan select, excluding :created_at and :updated_at
+      (-> (json/encode dashcard)
+          json/decode+kw
+          from-parsed-json))
+   =>
+   true
+   ```"
+  [dashboard-card]
+  (t2/instance :model/DashboardCard
+               (-> dashboard-card
+                   (m/update-existing :parameter_mappings #(some->> % (lib/normalize ::parameters.schema/parameter-mappings)))
+                   (m/update-existing :visualization_settings mi/normalize-visualization-settings))))
+
+(defn virtual-card-settings
+  "`visualization_settings` for a virtual dashcard — a dashcard with no backing card, such as a text
+  card, heading, link, or iframe. `display` is the virtual display type as a string (\"text\",
+  \"heading\", \"link\", \"iframe\", ...); `extras` (e.g. `{:text \"...\"}`, `{:link {:url \"...\"}}`)
+  is merged in on top of the `:virtual_card` wrapper. Mirrors the shape the frontend saves; see
+  `createVirtualCard` in frontend/src/metabase/common/utils/dashboard.ts."
+  [display extras]
+  (cond-> (merge {:virtual_card {:name                   nil
+                                 :display                display
+                                 :visualization_settings {}
+                                 :archived               false}}
+                 extras)
+    ;; headings render without a card background, matching the frontend default
+    (= display "heading") (assoc :dashcard.background false)))
+
+;;; --------------------------------------------------- HYDRATION ----------------------------------------------------
+
+(mi/define-batched-hydration-method series
+  :series
+  "Return the `Cards` associated as additional series on this DashboardCard."
+  [dashcards]
+  (when (seq dashcards)
+    (let [dashcard-ids        (map :id dashcards)
+          dashcard-id->series (when (seq dashcard-ids)
+                                (as-> (dashboards.db/series-cards-for-dashcards dashcard-ids) series
+                                  (group-by :dashboardcard_id series)
+                                  (update-vals series #(map (fn [card] (dissoc card :dashboardcard_id)) %))))]
+      (map (fn [dashcard]
+             (assoc dashcard :series (get dashcard-id->series (:id dashcard) [])))
+           dashcards))))
+
+;;; ---------------------------------------------------- CRUD FNS ----------------------------------------------------
+
+(mu/defn retrieve-dashboard-card
+  "Fetch a single DashboardCard by its ID value."
+  [id :- ms/PositiveInt]
+  (-> (dashboards.db/dashcard id)
+      (t2/hydrate :series)))
+
+(defn dashcard->multi-cards
+  "Return the cards which have been added to this dashcard using the 'add series' dashboard feature.
+
+  Dashboards allow Line, Area, and Bar dashcards to have other questions (series) added to them
+  so that several Questions are displayed in a single dashcard.
+
+  It's important to know that this is different from the combo display,
+  which is its own visualization type for Questions.
+
+  This is also different from having multiple series displayed on Line, Area, or Bar Questions."
+  [dashcard]
+  (dashboards.db/multi-cards-for-dashcard (:id dashcard)))
+
+(defn update-dashboard-cards-series!
+  "Batch update the DashboardCardSeries for multiple DashboardCards.
+  Each `card-ids` list should be a definitive collection of *all* IDs of cards for the dashboard card in the desired order.
+
+  *  If an ID in `card-ids` has no corresponding existing DashboardCardSeries object, one will be created.
+  *  If an existing DashboardCardSeries has no corresponding ID in `card-ids`, it will be deleted.
+  *  All cards will be updated with a `position` according to their place in the collection of `card-ids`"
+  {:arglists '([dashcard-id->card-ids])}
+  [dashcard-id->card-ids]
+  (when (seq dashcard-id->card-ids)
+    ;; first off, just delete all series on the dashboard card (we add them again below)
+    (dashboards.db/delete-series-for-dashcards! (keys dashcard-id->card-ids))
+    ;; now just insert all of the series that were given to us
+    (when-let [card-series (seq (for [[dashcard-id card-ids] dashcard-id->card-ids
+                                      [i card-id]            (map-indexed vector card-ids)]
+                                  {:dashboardcard_id dashcard-id, :card_id card-id, :position i}))]
+      (dashboards.db/insert-dashcard-series! card-series))))
+
+(def ^:private DashboardCardUpdates
+  [:merge
+   ::dashboards.schema/dashboard-card.update
+   [:map {:closed true}
+    [:id                     ms/PositiveInt]
+    ;; series is a sequence of IDs of additional cards after the first to include as "additional serieses"
+    [:series {:optional true} [:maybe [:sequential ms/PositiveInt]]]
+    [:card   {:optional true} [:maybe ::queries.schema/card]]
+    [:collection_authority_level {:optional true} [:maybe [:or :keyword :string]]]]])
+
+(defn- shallow-updates
+  "Returns the keys in `new` that have different values than the corresponding keys in `old`"
+  [new old]
+  (into {}
+        (filter (fn [[k v]]
+                  (not= v (get old k)))
+                new)))
+
+(mu/defn update-dashboard-card!
+  "Updates an existing DashboardCard including all DashboardCardSeries.
+   `old-dashboard-card` is provided to avoid an extra DB call if there are no changes.
+   Returns nil."
+  [{dashcard-id :id :keys [series] :as dashboard-card} :- DashboardCardUpdates
+   old-dashboard-card :- DashboardCardUpdates]
+  (t2/with-transaction [_conn]
+    (let [update-ks [:action_id :card_id :row :col :size_x :size_y
+                     :parameter_mappings :visualization_settings :dashboard_tab_id :inline_parameters]
+          updates   (shallow-updates (select-keys dashboard-card update-ks)
+                                     (select-keys old-dashboard-card update-ks))]
+      (when (seq updates)
+        (dashboards.db/update-dashcard! dashcard-id updates))
+      (when (not= (:series dashboard-card [])
+                  (:series old-dashboard-card []))
+        (update-dashboard-cards-series! {dashcard-id series}))
+      nil)))
+
+(def ^:private NewDashboardCard
+  [:merge
+   ::dashboards.schema/dashboard-card.update
+   [:map {:closed true}
+    [:dashboard_id                ms/PositiveInt]
+    [:id                          {:optional true} [:maybe ms/Int]]
+    [:card                        {:optional true} [:maybe [:ref ::queries.schema/card]]]
+    [:collection_authority_level  {:optional true} [:maybe [:or :keyword :string]]]
+    [:series                      {:optional true} [:maybe [:sequential ms/PositiveInt]]]]])
+
+(mu/defn create-dashboard-cards!
+  "Create a new DashboardCard by inserting it into the database along with all associated pieces of data such as
+  DashboardCardSeries. Returns the newly created DashboardCard or throws an Exception."
+  [dashboard-cards :- [:sequential NewDashboardCard]]
+  (when (seq dashboard-cards)
+    (t2/with-transaction [_conn]
+      (let [card-ids (keep :card_id dashboard-cards)]
+        (when (seq card-ids)
+          (let [in-report-cards (dashboards.db/document-cards-among card-ids)]
+            (when (seq in-report-cards)
+              (throw (ex-info "Cards with 'document_id' cannot be added to dashboards"
+                              {:status-code 400
+                               :in-report-card-ids (map :id in-report-cards)}))))))
+      (let [dashboard-card-ids (dashboards.db/insert-dashcards!
+                                (for [dashcard dashboard-cards]
+                                  (merge {:parameter_mappings []
+                                          :visualization_settings {}
+                                          :inline_parameters []}
+                                         (dissoc dashcard :id :created_at :updated_at :entity_id :series :card :collection_authority_level))))]
+        ;; add series to the DashboardCard
+        (update-dashboard-cards-series! (zipmap dashboard-card-ids (map #(get % :series []) dashboard-cards)))
+        ;; return the full DashboardCard
+        (-> (dashboards.db/dashcards-by-ids dashboard-card-ids)
+            (t2/hydrate :series))))))
+
+(defn- cleanup-orphaned-inline-parameters!
+  "Remove inline parameter IDs from the dashboard's parameters list when dashcards are deleted.
+   Since inline parameters can only be referenced by a single card, all inline parameters
+   from deleted cards become orphaned."
+  [dashboard-card-ids]
+  (when (seq dashboard-card-ids)
+    (let [cards-being-deleted (dashboards.db/dashcards-by-ids dashboard-card-ids)
+          orphaned-param-ids (set (mapcat :inline_parameters cards-being-deleted))
+          ;; Get dashboard IDs (should all be the same, but let's be safe)
+          dashboard-ids (set (map :dashboard_id cards-being-deleted))]
+      (when (and (seq orphaned-param-ids) (= 1 (count dashboard-ids)))
+        (let [dashboard-id (first dashboard-ids)
+              dashboard (dashboards.db/dashboard dashboard-id)
+              current-params (:parameters dashboard)
+              cleaned-params (filterv #(not (contains? orphaned-param-ids (:id %)))
+                                      current-params)]
+          (when (not= (count current-params) (count cleaned-params))
+            (dashboards.db/update-dashboard! dashboard-id {:parameters cleaned-params})
+            (count orphaned-param-ids)))))))
+
+(defn delete-dashboard-cards!
+  "Delete DashboardCards of a Dashboard. Automatically cleans up orphaned inline parameters."
+  [dashboard-card-ids]
+  {:pre [(coll? dashboard-card-ids)]}
+  (t2/with-transaction [_conn]
+    ;; Clean up inline parameters before deletion (since we need to read the cards first)
+    (cleanup-orphaned-inline-parameters! dashboard-card-ids)
+    ;; Delete the cards
+    (dashboards.db/delete-pulse-cards-for-dashcards! dashboard-card-ids)
+    (dashboards.db/delete-dashcards! dashboard-card-ids)))
+
+;;; ----------------------------------------------- Link cards ----------------------------------------------------
+
+(def ^:private link-card-models
+  (set (keys serdes/link-card-model->toucan-model)))
+
+(defn link-card-entity
+  "The instance of the link-card `model` (a string like \"card\" or \"table\") with `id`, or nil."
+  [model id]
+  (dashboards.db/link-card-entity model id))
+
+(mi/define-batched-hydration-method dashcard-linkcard-info
+  :dashcard/linkcard-info
+  "Update entity info for link cards.
+
+  Link cards are dashcards that link to internal entities like Database/Dashboard/... or an url.
+  The viz-settings only store the model name and id, info like name, description will need to be
+  hydrated on fetch to make sure those info are up-to-date."
+  [dashcards]
+  (let [entity-path   [:visualization_settings :link :entity]
+        ;; find all dashcards that are link-cards and get its model, id
+        ;; [[:table #{1 2}] [:database #{3 4}]]
+        model-and-ids (->> dashcards
+                           (map #(get-in % entity-path))
+                           (filter #(link-card-models (:model %)))
+                           (group-by :model)
+                           (map (fn [[k v]] [k (set (map :id v))])))]
+    (if (seq model-and-ids)
+      (let [;; query all entities in 1 db call
+            ;; {[:table 3] {:name ...}}
+            model-and-id->info
+            (-> (m/index-by (juxt :model :id) (dashboards.db/link-card-info-rows model-and-ids))
+                (update-vals (fn [{model :model :as instance}]
+                               (if (mi/can-read? (t2/instance (serdes/link-card-model->toucan-model model) instance))
+                                 instance
+                                 {:restricted true}))))]
+        (map (fn [card]
+               (if-let [model-info (->> (get-in card entity-path)
+                                        ((juxt :model :id))
+                                        (get model-and-id->info))]
+                 (assoc-in card entity-path model-info)
+                 card))
+             dashcards))
+      dashcards)))
+
+(defn dashcard-comparator
+  "Comparator that determines which of two dashcards comes first in the layout order used for pulses.
+  This is the same order used on the frontend for the mobile layout. Orders cards left-to-right, then top-to-bottom"
+  [{row-1 :row col-1 :col} {row-2 :row col-2 :col}]
+  (if (= row-1 row-2)
+    (compare col-1 col-2)
+    (compare row-1 row-2)))
+
+;;; ----------------------------------------------- SERIALIZATION ----------------------------------------------------
+
+(defmethod serdes/generate-path "DashboardCard" [_ dashcard]
+  (remove nil?
+          [(serdes/infer-self-path "Dashboard" (dashboards.db/dashboard (:dashboard_id dashcard)))
+           (when (:dashboard_tab_id dashcard)
+             (serdes/infer-self-path "DashboardTab" (dashboards.db/dashboard-tab (:dashboard_tab_id dashcard))))
+           (serdes/infer-self-path "DashboardCard" dashcard)]))
+
+(defmethod serdes/make-spec "DashboardCard" [_model-name opts]
+  {:copy      [:col :entity_id :inline_parameters :row :size_x :size_y]
+   :skip      []
+   :transform {:created_at             (serdes/date)
+               :dashboard_id           (serdes/parent-ref)
+               :card_id                (serdes/fk :model/Card)
+               :action_id              (serdes/fk :model/Action)
+               :dashboard_tab_id       (serdes/fk :model/DashboardTab)
+               :parameter_mappings     {:export serdes/export-parameter-mappings
+                                        :import serdes/import-parameter-mappings}
+               :visualization_settings {:export serdes/export-visualization-settings
+                                        :import serdes/import-visualization-settings}
+               :series                 (serdes/nested :model/DashboardCardSeries :dashboardcard_id
+                                                      (assoc opts
+                                                             :sort-by :position
+                                                             :key-field :card_id))}})

@@ -1,0 +1,227 @@
+(ns metabase.task-history.api
+  "/api/task endpoints"
+  (:require
+   [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
+   [metabase.permissions.core :as perms]
+   [metabase.query-processor.parameters.dates :as params.dates]
+   [metabase.request.core :as request]
+   [metabase.task-history.db :as task-history.db]
+   [metabase.task-history.models.task-history :as task-history]
+   [metabase.task-history.models.task-run :as task-run]
+   [metabase.task.core :as task]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/"
+  "Fetch a list of recent tasks stored as Task History"
+  [_
+   params :- [:maybe task-history/FilterAndSortParams]]
+  (perms/check-has-application-permission :monitoring)
+  {:total  (task-history/total params)
+   :limit  (request/limit)
+   :offset (request/offset)
+   :data   (task-history/all (request/limit) (request/offset) params)})
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/:id"
+  "Get `TaskHistory` entry with ID."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]]
+  (api/check-404 (api/read-check :model/TaskHistory id)))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/info"
+  "Return raw data about all scheduled tasks (i.e., Quartz Jobs and Triggers)."
+  []
+  (perms/check-has-application-permission :monitoring)
+  (task/scheduler-info))
+
+;;; TODO -- this is not necessarily a 'task history' thing and maybe belongs in the `task` module's API rather than
+;;; here... maybe a problem for another day.
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/unique-tasks"
+  "Returns possibly empty vector of unique task names in alphabetical order. It is expected that number of unique
+  tasks is small, hence no need for pagination. If that changes this endpoint and function that powers it should
+  reflect that."
+  [] :- [:vector string?]
+  (perms/check-has-application-permission :monitoring)
+  (task-history/unique-tasks))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               Task Runs endpoints                                              |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(mr/def ::RunFilterParams
+  [:map {:closed true}
+   [:run-type    {:optional true} (into [:enum] (map name task-run/run-types))]
+   [:entity-type {:optional true} (into [:enum] (map name task-run/entity-types))]
+   [:entity-id   {:optional true} ms/PositiveInt]
+   [:status      {:optional true} [:enum "started" "success" "failed" "abandoned"]]
+   [:started-at  {:optional true} ms/NonBlankString]])
+
+(def ^:private run-sort-columns
+  "Columns that runs can be sorted by. `:entity_name` and `:task_count` are derived via joins in [[runs-order-by]]."
+  #{:started_at :ended_at :run_type :status :entity_name :task_count})
+
+(mr/def ::RunSortParams
+  [:map {:closed true}
+   [:sort-column    {:default :started_at} (into [:enum] run-sort-columns)]
+   [:sort-direction {:default :desc}       [:enum :asc :desc]]])
+
+(mr/def ::TaskRun
+  [:map
+   [:id          ms/PositiveInt]
+   [:run_type    (into [:enum] task-run/run-types)]
+   [:entity_type (into [:enum] task-run/entity-types)]
+   [:entity_id   ms/PositiveInt]
+   [:started_at  :any]
+   [:ended_at    [:maybe :any]]
+   [:status      [:enum :started :success :failed :abandoned]]
+   [:entity_name {:optional true} [:maybe :string]]
+   [:task_count  {:optional true} :int]
+   [:success_count {:optional true} :int]
+   [:failed_count {:optional true} :int]])
+
+(mr/def ::TaskRunsResponse
+  [:map
+   [:total  ms/IntGreaterThanOrEqualToZero]
+   [:limit  [:maybe ms/PositiveInt]]
+   [:offset [:maybe ms/IntGreaterThanOrEqualToZero]]
+   [:data   [:sequential ::TaskRun]]])
+
+(mr/def ::TaskHistory
+  [:map
+   [:id           ms/PositiveInt]
+   [:task         :string]
+   [:started_at   :any]
+   [:ended_at     [:maybe :any]]
+   [:duration     [:maybe :int]]
+   [:status       [:enum :started :success :failed :unknown]]
+   [:task_details {:optional true} [:maybe :map]]
+   [:run_id       {:optional true} [:maybe ms/PositiveInt]]
+   [:logs         {:optional true} [:maybe :any]]])
+
+(mr/def ::TaskRunWithTasks
+  [:merge ::TaskRun
+   [:map
+    [:tasks [:sequential ::TaskHistory]]]])
+
+(mr/def ::RunEntity
+  [:map
+   [:entity_type (into [:enum] task-run/entity-types)]
+   [:entity_id   ms/PositiveInt]
+   [:entity_name {:optional true} [:maybe :string]]])
+
+(def ^:private entity-type->names-fn
+  {:database  task-history.db/database-names-by-id
+   :card      task-history.db/card-names-by-id
+   :dashboard task-history.db/dashboard-names-by-id})
+
+(defn- hydrate-entity-names
+  "Hydrate entity names based on entity_type and entity_id."
+  [runs]
+  (if (empty? runs)
+    runs
+    (let [grouped    (group-by :entity_type runs)
+          name-lookup (into {}
+                            (mapcat (fn [[entity-type names-fn]]
+                                      (when-let [entity-runs (grouped entity-type)]
+                                        (let [ids   (map :entity_id entity-runs)
+                                              names (names-fn ids)]
+                                          (map (fn [[id name]] [[entity-type id] name]) names))))
+                                    entity-type->names-fn))]
+      (map #(assoc % :entity_name (get name-lookup [(:entity_type %) (:entity_id %)])) runs))))
+
+(defn- hydrate-task-counts
+  "Add task_count, success_count, failed_count to runs."
+  [runs]
+  (if (empty? runs)
+    runs
+    (let [run-ids      (map :id runs)
+          counts       (task-history.db/task-counts-for-runs run-ids)
+          ;; Coerce counts to int (MySQL may return BigDecimal)
+          counts-by-id (into {} (map (fn [{:keys [run_id task_count success_count failed_count]}]
+                                       [run_id {:task_count    (int task_count)
+                                                :success_count (int success_count)
+                                                :failed_count  (int failed_count)}])
+                                     counts))]
+      (map #(merge {:task_count 0 :success_count 0 :failed_count 0}
+                   %
+                   (get counts-by-id (:id %)))
+           runs))))
+
+(defn- timestamp-range
+  [date-string]
+  (let [{:keys [start end]}
+        (try
+          (params.dates/date-string->range date-string {:inclusive-end? false})
+          (catch Exception e
+            (throw (ex-info (tru "Failed to parse datetime value: {0}" date-string)
+                            {:status-code 400}
+                            e))))]
+    [(some-> start u.date/parse) (some-> end u.date/parse)]))
+
+(defn- run-filters
+  [{:keys [run-type entity-type entity-id status started-at]}]
+  (let [[start end] (when started-at (timestamp-range started-at))]
+    {:run-type          run-type
+     :entity-type       entity-type
+     :entity-id         entity-id
+     :status            status
+     :started-at-start  start
+     :started-at-end    end}))
+
+(api.macros/defendpoint :get "/runs" :- ::TaskRunsResponse
+  "List task runs with optional filters. Returns runs with hydrated entity names and task counts."
+  [_
+   {:keys [sort-column sort-direction] :as params} :- [:maybe [:merge ::RunFilterParams ::RunSortParams]]]
+  (perms/check-has-application-permission :monitoring)
+  (let [filters (run-filters params)
+        limit   (request/limit)
+        offset  (request/offset)
+        runs    (task-history.db/task-runs filters sort-column sort-direction limit offset)]
+    {:total  (task-history.db/task-run-count filters)
+     :limit  limit
+     :offset offset
+     :data   (-> runs hydrate-entity-names hydrate-task-counts)}))
+
+(api.macros/defendpoint :get "/runs/:id" :- ::TaskRunWithTasks
+  "Get a single task run with all its child tasks."
+  [{:keys [id]} :- [:map {:closed true} [:id ms/PositiveInt]]]
+  (perms/check-has-application-permission :monitoring)
+  (let [run   (api/check-404 (task-history.db/task-run id))
+        tasks (task-history.db/tasks-for-run id)]
+    (-> [run]
+        hydrate-entity-names
+        hydrate-task-counts
+        first
+        (assoc :tasks tasks))))
+
+(api.macros/defendpoint :get "/runs/entities" :- [:sequential ::RunEntity]
+  "Get distinct entities that have task runs for a given run type. Used for populating entity filter picker."
+  [_
+   params :- [:map {:closed true}
+              [:run-type   (into [:enum] (map name task-run/run-types))]
+              [:started-at ms/NonBlankString]]]
+  (perms/check-has-application-permission :monitoring)
+  (let [[start end] (timestamp-range (:started-at params))]
+    (->> (task-history.db/distinct-run-entities (:run-type params) start end)
+         (map #(update % :entity_type keyword))
+         hydrate-entity-names)))

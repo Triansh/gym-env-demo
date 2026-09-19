@@ -1,0 +1,133 @@
+// @ts-expect-error There is no type definition
+import createAsyncCallback from "@loki/create-async-callback";
+import type { Store } from "@reduxjs/toolkit";
+import type { StoryFn } from "@storybook/react";
+import { expect, userEvent, within } from "@storybook/test";
+import { KBarProvider, VisualState, useKBar } from "kbar";
+import { HttpResponse, http } from "msw";
+
+import { getCommonStore } from "__support__/entities-store";
+import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
+import { createMockEntitiesState } from "__support__/store";
+import { MetabaseReduxProvider } from "metabase/redux";
+import type { State } from "metabase/redux/store";
+import { Box, Center } from "metabase/ui";
+import { ComboChart } from "metabase/visualizations/visualizations/ComboChart";
+import { LineChart } from "metabase/visualizations/visualizations/LineChart";
+import { SmartScalar } from "metabase/visualizations/visualizations/SmartScalar";
+import { Table } from "metabase/visualizations/visualizations/Table/Table";
+import { registerVisualization } from "metabase/viz-core";
+
+import { PaletteContainer } from "./Palette";
+import { recents, search } from "./test_data.json";
+
+const settings = mockSettings();
+
+const storeInitialState = createMockState({
+  settings,
+  entities: createMockEntitiesState({}),
+});
+registerVisualization(SmartScalar);
+registerVisualization(ComboChart);
+registerVisualization(LineChart);
+registerVisualization(Table);
+
+// Unjustified type cast. FIXME
+const store = getCommonStore(storeInitialState) as unknown as Store<State>;
+
+const ReduxDecorator = (Story: StoryFn) => {
+  return (
+    <MetabaseReduxProvider store={store}>
+      <KBarProvider>
+        <Story />
+      </KBarProvider>
+    </MetabaseReduxProvider>
+  );
+};
+
+const DefaultTemplate = () => {
+  const { query } = useKBar();
+
+  query.setVisualState(VisualState.showing);
+
+  return (
+    <Box h="100%" w="100%">
+      <Center>
+        <PaletteContainer disabled={false} locationQuery={{}} />
+      </Center>
+    </Box>
+  );
+};
+
+const msw = {
+  handlers: [
+    http.get(/api\/search/, () => HttpResponse.json(search)),
+    http.get(/\/api\/activity\/recents/, () => HttpResponse.json({ recents })),
+    http.get(/\/api\/database/, () => HttpResponse.json({ data: [] })),
+  ],
+};
+
+export default {
+  title: "App/Palette",
+  component: PaletteContainer,
+  decorators: [ReduxDecorator],
+  parameters: {
+    msw,
+    layout: "fullscreen",
+    loki: {
+      chromeSelector: "[data-testid=command-palette]",
+    },
+  },
+};
+
+export const Default = {
+  render: DefaultTemplate,
+  parameters: {
+    loki: {
+      skip: true,
+    },
+    msw,
+  },
+};
+
+export const Recents = {
+  render: DefaultTemplate,
+
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const asyncCallback = createAsyncCallback();
+    try {
+      const canvas = within(canvasElement);
+
+      await canvas.findByRole("option", { name: "Recents" });
+    } finally {
+      asyncCallback();
+    }
+  },
+};
+
+export const Search = {
+  render: DefaultTemplate,
+
+  play: async ({ canvasElement }: { canvasElement: HTMLCanvasElement }) => {
+    const asyncCallback = createAsyncCallback();
+    try {
+      const canvas = within(canvasElement);
+
+      await userEvent.type(
+        await canvas.findByPlaceholderText(/Search for anything/),
+        "ord",
+      );
+
+      await canvas.findByRole("option", { name: "Results" });
+
+      // Wait for the result to all show up because "Results" will be
+      // present when the search query is still loading
+      await expect(
+        await canvas.findByText("Product breakdown"),
+      ).toBeInTheDocument();
+    } finally {
+      asyncCallback();
+    }
+  },
+};

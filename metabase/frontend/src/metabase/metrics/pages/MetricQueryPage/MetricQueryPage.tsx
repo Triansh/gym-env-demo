@@ -1,0 +1,163 @@
+import { useLayoutEffect, useMemo, useState } from "react";
+import { useLatest } from "react-use";
+import { t } from "ttag";
+
+import { useUpdateCardMutation } from "metabase/api";
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { PaneHeaderActions } from "metabase/common/data-studio/components/PaneHeader";
+import { getResultMetadata } from "metabase/common/data-studio/utils/get-result-metadata";
+import { useMetadataToasts } from "metabase/common/hooks";
+import type {
+  MetricPageParams,
+  MetricPageProps,
+  MetricUrls,
+} from "metabase/common/metrics/types";
+import { useQuestionFromCard } from "metabase/metadata-store";
+import { getInitialUiState } from "metabase/querying/editor/components/QueryEditor";
+import { useParams } from "metabase/router";
+import { Card } from "metabase/ui";
+import * as Lib from "metabase-lib";
+import type { Card as CardApiType } from "metabase-types/api";
+
+import { MetricPageCard } from "../../components/MetricPageCard";
+import { MetricPageShell } from "../../components/MetricPageShell";
+import { MetricQueryEditor } from "../../components/MetricQueryEditor";
+import { metricUrls as defaultUrls } from "../../urls";
+import { getValidationResult } from "../../utils/validation";
+
+export function MetricQueryPage({
+  urls = defaultUrls,
+  renderBreadcrumbs,
+  showAppSwitcher,
+  showDataStudioLink = true,
+}: MetricPageProps) {
+  const { cardId } = useParams<MetricPageParams>();
+
+  return (
+    <MetricPageCard cardId={cardId}>
+      {(card) => (
+        <MetricQueryPageBody
+          card={card}
+          urls={urls}
+          renderBreadcrumbs={renderBreadcrumbs}
+          showAppSwitcher={showAppSwitcher}
+          showDataStudioLink={showDataStudioLink}
+        />
+      )}
+    </MetricPageCard>
+  );
+}
+
+interface MetricQueryPageBodyProps extends MetricPageProps {
+  card: CardApiType;
+  urls: MetricUrls;
+}
+
+function MetricQueryPageBody({
+  card,
+  urls,
+  renderBreadcrumbs,
+  showAppSwitcher,
+  showDataStudioLink,
+}: MetricQueryPageBodyProps) {
+  const cardQuestion = useQuestionFromCard(card);
+  const [datasetQuery, setDatasetQuery] = useState(card.dataset_query);
+  const [uiState, setUiState] = useState(getInitialUiState);
+  const [updateCard, { isLoading: isSaving }] = useUpdateCardMutation();
+  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+
+  const question = useMemo(
+    () => cardQuestion.setDatasetQuery(datasetQuery),
+    [cardQuestion, datasetQuery],
+  );
+
+  const resultMetadata = useMemo(() => {
+    return getResultMetadata(
+      datasetQuery,
+      uiState.lastRunQuery,
+      uiState.lastRunResult,
+    );
+  }, [datasetQuery, uiState.lastRunResult, uiState.lastRunQuery]);
+
+  const validationResult = useMemo(
+    () => getValidationResult(question.query()),
+    [question],
+  );
+
+  const isDirty = useMemo(() => {
+    return !Lib.areLegacyQueriesEqual(datasetQuery, card.dataset_query);
+  }, [datasetQuery, card.dataset_query]);
+
+  const handleChangeQuery = (query: Lib.Query) => {
+    setDatasetQuery(Lib.toJsQuery(query));
+  };
+
+  const handleSave = async () => {
+    const questionWithMetadata = question.setResultsMetadata(
+      resultMetadata ? { columns: resultMetadata } : null,
+    );
+    const { display, settings } = Lib.defaultDisplay(
+      questionWithMetadata.query(),
+    );
+    const { error } = await updateCard({
+      id: card.id,
+      dataset_query: questionWithMetadata.datasetQuery(),
+      display,
+      visualization_settings: settings,
+      result_metadata: resultMetadata,
+    });
+    if (error) {
+      sendErrorToast(t`Failed to update metric query`);
+    } else {
+      sendSuccessToast(t`Metric query updated`);
+    }
+  };
+
+  const handleCancel = () => {
+    setDatasetQuery(card.dataset_query);
+  };
+
+  const handleResetRef = useLatest(() => {
+    setDatasetQuery(card.dataset_query);
+    setUiState(getInitialUiState());
+  });
+
+  useLayoutEffect(() => {
+    handleResetRef.current();
+  }, [card.id, handleResetRef]);
+
+  return (
+    <>
+      <PageContainer pos="relative" data-testid="metric-query-editor" gap="xxl">
+        <MetricPageShell
+          card={card}
+          urls={urls}
+          renderBreadcrumbs={renderBreadcrumbs}
+          showAppSwitcher={showAppSwitcher}
+          showDataStudioLink={showDataStudioLink}
+          actions={
+            <PaneHeaderActions
+              errorMessage={validationResult.errorMessage}
+              isValid={validationResult.isValid}
+              isDirty={isDirty}
+              isSaving={isSaving}
+              onSave={handleSave}
+              onCancel={handleCancel}
+            />
+          }
+        />
+        <Card withBorder shadow="none" flex={1} p={0}>
+          <MetricQueryEditor
+            query={question.query()}
+            uiState={uiState}
+            readOnly={!card.can_write}
+            onChangeQuery={handleChangeQuery}
+            onChangeUiState={setUiState}
+          />
+        </Card>
+      </PageContainer>
+      <LeaveRouteConfirmModal isEnabled={isDirty && !isSaving} />
+    </>
+  );
+}

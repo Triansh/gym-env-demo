@@ -1,0 +1,96 @@
+(ns metabase.activity-feed.events.recent-views
+  "This namespace is responsible for subscribing to events which should update the recent views for a user."
+  (:require
+   [metabase.activity-feed.db :as activity-feed.db]
+   [metabase.activity-feed.models.recent-views :as recent-views]
+   [metabase.api.common :as api]
+   [metabase.events.core :as events]
+   [metabase.util :as u]
+   [metabase.util.log :as log]
+   [methodical.core :as m]
+   [steffan-westcott.clj-otel.api.trace.span :as span]))
+
+(events/derive! ::dashboard-read :metabase/event)
+(events/derive! :event/dashboard-read ::dashboard-read)
+
+(m/defmethod events/publish-event! ::dashboard-read
+  "Handle processing for a single event notification which should update the recent views for a user."
+  [topic {:keys [object-id user-id] :as _event}]
+  (try
+    (let [model-id object-id
+          user-id  (or user-id api/*current-user-id*)]
+      (recent-views/update-users-recent-views! user-id :model/Dashboard model-id :view))
+    (catch Throwable e
+      (log/warnf "Failed to process recent_views event %s: %s" topic (ex-message e)))))
+
+(events/derive! ::table-read :metabase/event)
+(events/derive! :event/table-read ::table-read)
+
+(m/defmethod events/publish-event! ::table-read
+  "Handle processing for a single table read event."
+  [topic {:keys [object user-id] :as _event}]
+  (span/with-span!
+    {:name (str "recent-views-" (name topic))
+     :topic topic
+     :user-id user-id}
+    (try
+      (when object
+        (let [model-id (u/id object)
+              user-id  (or user-id api/*current-user-id*)]
+          (recent-views/update-users-recent-views! user-id :model/Table model-id :view)))
+      (catch Throwable e
+        (log/warnf "Failed to process recent_views event %s: %s" topic (ex-message e))))))
+
+(events/derive! ::card-query-event :metabase/event)
+(events/derive! :event/card-query ::card-query-event)
+
+(m/defmethod events/publish-event! ::card-query-event
+  "Handle processing for a single card query event."
+  [topic {:keys [card-id user-id context] :as _event}]
+  (try
+    (let [user-id (or user-id api/*current-user-id*)]
+      ;; we don't want to count pinned card views or document cards
+      (when (and user-id
+                 (not (#{:collection :dashboard :dashboard-subscription} context))
+                 (not (activity-feed.db/card-document-id card-id)))
+        (recent-views/update-users-recent-views! user-id :model/Card card-id :view)))
+    (catch Throwable e
+      (log/warnf "Failed to process recent_views event %s: %s" topic (ex-message e)))))
+
+(events/derive! ::card-create-with-result-metadata :metabase/event)
+(events/derive! :event/card-create-with-result-metadata ::card-create-with-result-metadata)
+
+(m/defmethod events/publish-event! ::card-create-with-result-metadata
+  "Handle recent-view processing for created cards with result metadata."
+  [topic {:keys [card-id user-id]}]
+  (try
+    (recent-views/update-users-recent-views! (or user-id api/*current-user-id*) :model/Card card-id :view)
+    (catch Throwable e
+      (log/warnf "Failed to process recent_views event %s: %s" topic (ex-message e)))))
+
+(events/derive! ::legacy-card-event :metabase/event)
+;; in practice, updating or creating a card will immediately trigger a card-read
+(events/derive! :event/card-read ::legacy-card-event)
+
+(m/defmethod events/publish-event! ::legacy-card-event
+  "Handle recent-view processing for card reads"
+  [topic {:keys [object-id user-id context]}]
+  (let [user-id (or user-id api/*current-user-id*)]
+    (when (and user-id
+               (= context :question)
+               (nil? (activity-feed.db/card-document-id object-id)))
+      (try
+        (recent-views/update-users-recent-views! user-id :model/Card object-id :view)
+        (catch Throwable e
+          (log/warnf "Failed to process recent_views event %s: %s" topic (ex-message e)))))))
+
+(events/derive! ::collection-touch-event :metabase/event)
+(events/derive! :event/collection-touch ::collection-touch-event)
+
+(m/defmethod events/publish-event! ::collection-touch-event
+  "Handle processing for a single collection touch event."
+  [topic {:keys [collection-id user-id] :as _event}]
+  (try
+    (recent-views/update-users-recent-views! (or user-id api/*current-user-id*) :model/Collection collection-id :view)
+    (catch Throwable e
+      (log/warnf "Failed to process recent_views event %s: %s" topic (ex-message e)))))

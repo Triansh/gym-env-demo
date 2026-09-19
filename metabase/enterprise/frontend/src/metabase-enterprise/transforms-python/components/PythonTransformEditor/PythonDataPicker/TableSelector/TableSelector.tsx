@@ -1,0 +1,151 @@
+import { useDisclosure } from "@mantine/hooks";
+import { t } from "ttag";
+
+import type { OmniPickerItem } from "metabase/common/components/Pickers";
+import {
+  DataPickerModal,
+  type DataPickerValue,
+} from "metabase/common/components/Pickers/DataPicker";
+import {
+  ActionIcon,
+  Box,
+  Button,
+  Ellipsified,
+  Group,
+  Icon,
+  Stack,
+  Tooltip,
+} from "metabase/ui";
+import type {
+  ConcreteTableId,
+  DatabaseId,
+  Table,
+  TableId,
+} from "metabase-types/api";
+import { isConcreteTableId } from "metabase-types/api";
+
+import S from "./TableSelector.module.css";
+
+export function TableSelector({
+  database,
+  availableTables,
+  selectedTableIds,
+  disabled,
+  onChange,
+  onRemove,
+  table,
+}: {
+  database: DatabaseId | undefined;
+  table: Table | undefined;
+  availableTables: Table[];
+  selectedTableIds: ConcreteTableId[];
+  disabled?: boolean;
+  onChange: (table: Table | undefined) => void;
+  onRemove: () => void;
+}) {
+  const [isOpened, { open, close }] = useDisclosure();
+
+  function handleChange(tableId: TableId | undefined) {
+    const table = availableTables.find((table) => table.id === tableId);
+    if (table) {
+      onChange(table);
+    }
+  }
+
+  function shouldDisableItem(item: OmniPickerItem) {
+    if (item.model === "table") {
+      // Filter available tables to exclude already selected ones (except current selection)
+      return !isConcreteTableId(item.id) || selectedTableIds.includes(item.id);
+    }
+    return false;
+  }
+
+  return (
+    <>
+      <Group
+        w="100%"
+        bdrs="xxs"
+        gap="xxs"
+        wrap="nowrap"
+        className={S.tableSelector}
+      >
+        <Button
+          flex="1 1 auto"
+          miw={0}
+          onClick={open}
+          disabled={disabled}
+          classNames={{ inner: S.tableSelectorButtonInner }}
+          px="sm"
+          py="xl"
+          variant="subtle"
+        >
+          <Stack gap="xxs">
+            {table ? (
+              <>
+                <Ellipsified fz="sm" c="text-secondary" fw="normal" ta="left">
+                  {`${table?.db?.name} / ${table?.schema}`}
+                </Ellipsified>
+                <Ellipsified c="text-primary" ta="left">
+                  {table?.display_name}
+                </Ellipsified>
+              </>
+            ) : (
+              <Box c="text-primary">{t`Select a table…`}</Box>
+            )}
+          </Stack>
+        </Button>
+
+        {!disabled && (
+          <Tooltip label={t`Remove this table`}>
+            <ActionIcon
+              onClick={onRemove}
+              mr="sm"
+              aria-label={t`Remove this table`}
+            >
+              <Icon name="close" c="text-primary" />
+            </ActionIcon>
+          </Tooltip>
+        )}
+      </Group>
+      {isOpened && (
+        <DataPickerModal
+          title={t`Pick a table`}
+          value={getDataPickerValue(table) ?? getDefaultDatabase(database)}
+          onlyDatabaseId={database}
+          onChange={handleChange}
+          onClose={close}
+          shouldDisableItem={shouldDisableItem}
+          models={["table"]}
+          options={{
+            hasLibrary: false,
+            hasDatabases: true,
+            hasRootCollection: false,
+            hasPersonalCollections: false,
+          }}
+        />
+      )}
+    </>
+  );
+}
+
+function getDefaultDatabase(dbId?: DatabaseId): DataPickerValue | undefined {
+  if (!dbId) {
+    return;
+  }
+  return {
+    model: "database",
+    id: dbId,
+  };
+}
+
+function getDataPickerValue(
+  table: Table | undefined,
+): DataPickerValue | undefined {
+  if (!table) {
+    return;
+  }
+  return {
+    model: "table",
+    id: table.id,
+  };
+}

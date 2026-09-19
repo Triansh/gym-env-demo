@@ -1,0 +1,65 @@
+(ns metabase.sso.common
+  "Shared functionality used by different integrations."
+  (:require
+   [clojure.data :as data]
+   [clojure.set :as set]
+   [metabase.permissions.core :as perms]
+   [metabase.sso.db :as sso.db]
+   [metabase.util :as u]
+   [metabase.util.log :as log]))
+
+(defn- excluded-group-ids
+  []
+  (into #{(u/the-id (perms/all-users-group))
+          (u/the-id (perms/all-external-users-group))}
+        (perms/data-app-group-ids)))
+
+(defn- sync-group-memberships*!
+  [user-or-id to-remove to-add]
+  (when (seq to-remove)
+    (log/debugf "Removing user %s from group(s) %s" (u/the-id user-or-id) to-remove)
+    (try
+      (perms/remove-user-from-groups! user-or-id to-remove)
+      (catch clojure.lang.ExceptionInfo e
+        ;; in case sync attempts to delete the last admin, the pre-delete hooks of
+        ;; [[metabase.permissions.models.permissions-group-membership/PermissionsGroupMembership]] will throw an exception.
+        ;; but we don't want to block user from logging-in, so catch this exception and log a warning
+        (if (= (ex-message e) (str perms/fail-to-remove-last-admin-msg))
+          (log/warn "Attempted to remove the last admin during group sync!"
+                    "Check your SSO group mappings and make sure the Administrators group is mapped correctly.")
+          ;; Raise an error rather than swallowing it since it's worse to leave a user with more permissions than we expect them have
+          (throw e)))))
+  ;; When adding a user to a group we want to allow individual adds to fail with exceptions
+  ;; that we will log
+  (doseq [group-or-id to-add]
+    (log/debugf "Adding user %s to group %s" (u/the-id user-or-id) (u/the-id group-or-id))
+    (try
+      (perms/add-user-to-group! user-or-id group-or-id)
+      (catch Throwable e
+        ;; A tenant/group mismatch means the user landed in the wrong space (e.g. an SSO login whose
+        ;; tenant assignment was lost); swallowing it would silently wedge the account (UXW-4898),
+        ;; so fail the login loudly instead. A nil :group-is-tenant? means the group doesn't exist —
+        ;; that stays on the log-and-continue path like any other bogus group id.
+        (if (some (comp some? :group-is-tenant?) (:bad-user-group-pairs (ex-data e)))
+          (throw e)
+          (log/errorf "Error adding user %s to group %s: %s" (u/the-id user-or-id) (u/the-id group-or-id) (ex-message e)))))))
+
+(defn sync-group-memberships!
+  "Update the PermissionsGroups a User belongs to, adding or deleting membership entries as needed so that Users is
+   only in `new-groups-or-ids`. Ignores special groups like `all-users`, and only optionally only touches groups with mappings set."
+  ([user-or-id new-groups-or-ids]
+   (let [excluded           (excluded-group-ids)
+         current-group-ids  (sso.db/user-group-ids-excluding (u/the-id user-or-id) excluded)
+         [to-remove to-add] (data/diff current-group-ids (set/difference (set (map u/the-id new-groups-or-ids))
+                                                                         excluded))]
+     (sync-group-memberships*! user-or-id to-remove to-add)))
+  ([user-or-id new-groups-or-ids mapped-groups-or-ids]
+   (let [excluded           (excluded-group-ids)
+         mapped-group-ids   (set (map u/the-id mapped-groups-or-ids))
+         current-group-ids  (when (seq mapped-group-ids)
+                              (sso.db/user-group-ids-among (u/the-id user-or-id) mapped-group-ids excluded))
+         new-group-ids      (-> (set (map u/the-id new-groups-or-ids))
+                                (set/intersection mapped-group-ids)
+                                (set/difference excluded))
+         [to-remove to-add] (data/diff current-group-ids new-group-ids)]
+     (sync-group-memberships*! user-or-id to-remove to-add))))

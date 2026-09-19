@@ -1,0 +1,92 @@
+import { createSelector } from "@reduxjs/toolkit";
+
+import { selectMetadataProvider } from "metabase/metadata-store";
+import type { State } from "metabase/redux/store";
+import * as Urls from "metabase/urls";
+import { parseNumber } from "metabase/utils/number";
+import * as Lib from "metabase-lib";
+import Question from "metabase-lib/v1/Question";
+import type { ForeignKey, RowValue } from "metabase-types/api";
+
+const STAGE_INDEX = 0;
+
+function getForeignKeyFilterClause(field: Lib.ColumnMetadata, rowId: RowValue) {
+  if (Lib.isStringOrStringLike(field) && typeof rowId === "string") {
+    return Lib.stringFilterClause({
+      operator: "=",
+      column: field,
+      values: [rowId],
+      options: {},
+    });
+  }
+
+  if (Lib.isNumeric(field) && typeof rowId === "string") {
+    const number = parseNumber(rowId);
+    if (number != null) {
+      return Lib.numberFilterClause({
+        operator: "=",
+        column: field,
+        values: [number],
+      });
+    }
+  }
+
+  if (Lib.isNumeric(field) && typeof rowId === "number") {
+    return Lib.numberFilterClause({
+      operator: "=",
+      column: field,
+      values: [rowId],
+    });
+  }
+
+  if (Lib.isBoolean(field) && typeof rowId === "boolean") {
+    return Lib.booleanFilterClause({
+      operator: "=",
+      column: field,
+      values: [rowId],
+    });
+  }
+}
+
+export const getForeignKeyQuery = createSelector(
+  [
+    (state: State, fk: ForeignKey) =>
+      selectMetadataProvider(state, fk.origin?.table?.db_id ?? null),
+    (_state: State, fk: ForeignKey) => fk,
+    (_state: State, _fk: ForeignKey, rowId: RowValue) => rowId,
+  ],
+  (metadataProvider, fk, rowId) => {
+    if (fk.origin == null || fk.origin.table == null) {
+      return;
+    }
+
+    const table = Lib.tableOrCardMetadata(metadataProvider, fk.origin.table_id);
+    const field = Lib.fieldMetadata(metadataProvider, fk.origin_id);
+    if (table == null || field == null) {
+      return;
+    }
+
+    const filter = getForeignKeyFilterClause(field, rowId);
+    if (filter == null) {
+      return;
+    }
+
+    return Lib.filter(
+      Lib.queryFromTableOrCardMetadata(metadataProvider, table),
+      STAGE_INDEX,
+      filter,
+    );
+  },
+);
+
+export function getForeignKeyCountQuery(fkQuery: Lib.Query) {
+  return Lib.aggregateByCount(fkQuery, STAGE_INDEX);
+}
+
+export const getForeignKeyQuestionUrl = (query: Lib.Query): string => {
+  const question = Question.create({
+    dataset_query: Lib.toJsQuery(query),
+  });
+
+  return Urls.card(question.card());
+};

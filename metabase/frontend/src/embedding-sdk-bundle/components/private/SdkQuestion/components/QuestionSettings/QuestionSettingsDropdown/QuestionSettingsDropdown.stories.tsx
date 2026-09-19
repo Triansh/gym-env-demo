@@ -1,0 +1,34 @@
+import { SdkQuestion } from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
+import { CommonSdkStoryWrapper } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
+import { Box, Stack } from "metabase/ui";
+
+import { QuestionSettingsDropdown } from "./QuestionSettingsDropdown";
+
+// Unjustified type cast. FIXME
+const QUESTION_ID = (window as any).QUESTION_ID || 11;
+
+export default {
+  title: "EmbeddingSDK/SdkQuestion/QuestionSettingsDropdown",
+  component: QuestionSettingsDropdown,
+  parameters: {
+    layout: "fullscreen",
+  },
+  decorators: [CommonSdkStoryWrapper],
+};
+
+export const Default = {
+  render() {
+    return (
+      <Box p="xl">
+        <SdkQuestion questionId={QUESTION_ID}>
+          <Stack>
+            <Box>
+              <SdkQuestion.QuestionSettingsDropdown />
+            </Box>
+            <SdkQuestion.QuestionVisualization />
+          </Stack>
+        </SdkQuestion>
+      </Box>
+    );
+  },
+};

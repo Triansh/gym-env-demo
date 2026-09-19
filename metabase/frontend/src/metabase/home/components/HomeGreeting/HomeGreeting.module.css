@@ -1,0 +1,25 @@
+.greetingLogoContainer {
+  position: relative;
+  width: 4rem;
+  height: 2.5rem;
+  margin-inline-end: 0.5rem;
+
+  @media (--breakpoint-min-xl) {
+    width: 4rem;
+    height: 3rem;
+  }
+}
+
+.greetingLogo {
+  width: 100%;
+  position: absolute;
+  top: 0;
+
+  &.isCool {
+    opacity: 1;
+  }
+
+  &.isNotCool {
+    opacity: 0;
+  }
+}

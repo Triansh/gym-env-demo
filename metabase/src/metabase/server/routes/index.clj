@@ -1,0 +1,158 @@
+(ns metabase.server.routes.index
+  "Logic related to loading various versions of the index.html template. The actual template lives in
+  `resources/frontend_client/index_template.html`; when the frontend is built (e.g. via `./bin/build.sh frontend`)
+  different versions that include the FE app are created as `index.html`, `public.html`, and `embed.html`."
+  (:require
+   [clojure.java.io :as io]
+   [clojure.string :as str]
+   [hiccup.util]
+   [metabase.appearance.core :as appearance]
+   [metabase.config.core :as config]
+   [metabase.initialization-status.core :as init-status]
+   [metabase.premium-features.core :as premium-features]
+   [metabase.settings.core :as setting]
+   [metabase.system.core :as system]
+   [metabase.users.settings :as users-settings]
+   [metabase.util.embed :as embed]
+   [metabase.util.i18n :as i18n :refer [trs]]
+   [metabase.util.json :as json]
+   [metabase.util.log :as log]
+   [metabase.util.memoize :as memoize]
+   [ring.util.codec :as codec]
+   [ring.util.response :as response]
+   [stencil.core :as stencil])
+  (:import
+   (java.io FileNotFoundException)))
+
+(set! *warn-on-reflection* true)
+
+(defn- base-href []
+  (let [path (some-> (system/site-url) io/as-url .getPath)]
+    (str path "/")))
+
+(defn- escape-script [s]
+  ;; Escapes text to be included in an inline <script> tag, in particular the string '</script'
+  ;; https://stackoverflow.com/questions/14780858/escape-in-script-tag-contents/23983448#23983448
+  (str/replace s #"(?i)</script" "</scr\\\\ipt"))
+
+(defn- fallback-localization [locale-or-name]
+  (json/encode
+   {"headers"
+    {"language"     (str locale-or-name)
+     "plural-forms" "nplurals=2; plural=(n != 1);"}
+
+    "translations"
+    {"" {"Metabase" {"msgid"  "Metabase"
+                     "msgstr" ["Metabase"]}}}}))
+
+(defn- localization-json-file-name [locale-string]
+  (format "frontend_client/app/locales/%s.json" (str/replace locale-string \- \_)))
+
+(defn- load-localization* [locale-string]
+  (or
+   (when locale-string
+     (when-not (= locale-string "en")
+       (try
+         (slurp (or (io/resource (localization-json-file-name locale-string))
+                    (when-let [fallback-locale (i18n/fallback-locale locale-string)]
+                      (io/resource (localization-json-file-name (str fallback-locale))))
+                    ;; don't try to i18n the Exception message below, we have no locale to translate it to!
+                    (throw (FileNotFoundException. (format "Locale '%s' not found." locale-string)))))
+         (catch Throwable e
+           (log/warn (.getMessage e))))))
+   (fallback-localization locale-string)))
+
+(let [load-fn (memoize load-localization*)]
+  (defn- load-localization
+    "Load a JSON-encoded map of localized strings for the current user's Locale."
+    [locale-override]
+    (load-fn (or locale-override (i18n/user-locale-string)))))
+
+(defn- load-inline-js* [resource-name]
+  (slurp (io/resource (format "frontend_client/inline_js/%s.js" resource-name))))
+
+(def ^:private ^{:arglists '([resource-name])} load-inline-js (memoize/memo load-inline-js*))
+
+(defn- load-template [path variables]
+  (try
+    (stencil/render-file path variables)
+    (catch IllegalArgumentException e
+      (let [message (trs "Failed to load template ''{0}''. Did you remember to build the Metabase frontend?" path)]
+        (log/error message (ex-message e))
+        (throw (Exception. message e))))))
+
+(defn- template-parameters
+  [embeddable? {:keys [uri params nonce]}]
+  (let [{:keys [anon-tracking-enabled google-auth-client-id], :as public-settings} (setting/user-readable-values-map #{:public})
+        ;; We disable `locale` parameter on static embeds/public links (metabase#50313)
+        should-load-locale-params? (not embeddable?)]
+    {:bootstrapJS            (load-inline-js "index_bootstrap")
+     :bootstrapJSON          (escape-script (json/encode public-settings))
+     :assetOnErrorJS         (load-inline-js "asset_loading_error")
+     :userLocalizationJSON   (escape-script (load-localization (when should-load-locale-params? (:locale params))))
+     :siteLocalizationJSON   (escape-script (load-localization (system/site-locale)))
+     :nonce                  (hiccup.util/escape-html nonce)
+     :language               (hiccup.util/escape-html (or (i18n/user-locale-string) (system/site-locale)))
+     :userColorScheme        (escape-script (json/encode (users-settings/color-scheme)))
+     :favicon                (hiccup.util/escape-html (let [custom-favicon (appearance/application-favicon-url)]
+                                                        (if (and config/is-dev?
+                                                                 (= custom-favicon "app/assets/img/favicon.ico"))
+                                                          "app/assets/img/favicon-dev.ico"
+                                                          custom-favicon)))
+     :applicationName        (hiccup.util/escape-html (appearance/application-name))
+     :uri                    (hiccup.util/escape-html uri)
+     :baseHref               (hiccup.util/escape-html (base-href))
+     :embedCode              (when embeddable? (embed/head (system/site-url) uri))
+     :enableGoogleAuth       (boolean google-auth-client-id)
+     :enableAnonTracking     (boolean anon-tracking-enabled)}))
+
+(defn- load-entrypoint-template [entrypoint-name embeddable? opts]
+  (load-template
+   (str "frontend_client/" entrypoint-name ".html")
+   (template-parameters embeddable? opts)))
+
+(defn- load-init-template []
+  (load-template
+   "frontend_client/init.html"
+   {:initJS (load-inline-js "init")}))
+
+(defn- entrypoint
+  "Response that serves up an entrypoint into the Metabase application, e.g. `index.html`."
+  [entrypoint-name embeddable? request respond _raise]
+  (respond
+   (-> (response/response (if (init-status/complete?)
+                            (load-entrypoint-template entrypoint-name embeddable? request)
+                            (load-init-template)))
+       (response/content-type "text/html; charset=utf-8"))))
+
+(def index  "main index.html entrypoint."    (partial entrypoint "index"  (not :embeddable)))
+(def public "/public index.html entrypoint." (partial entrypoint "public" :embeddable))
+(def embed  "/embed index.html entrypoint."  (partial entrypoint "embed"  :embeddable))
+(def embed-sdk  "/embed/sdk/v1 index.html entrypoint."  (partial entrypoint "embed-sdk"  :embeddable))
+(def ^:private data-app-shell
+  "Raw `/embed/apps/:name` iframe HTML entrypoint, before feature gating."
+  (partial entrypoint "data-app" :embeddable))
+
+(defn- login-redirect
+  "302 to the login page, returning the user to the top-level `/apps/...` page for the
+   `/embed/apps/...` iframe document they asked for (the bare iframe shell is not a page
+   a person would want to land on). `site-url` is nil until a superuser's first request
+   sets it, and this is reached by signed-out visitors: `str` drops the nil, so the
+   redirect is then relative."
+  [{:keys [uri query-string]}]
+  (let [target (cond-> (str/replace-first uri #"^/embed/" "/")
+                 (seq query-string) (str "?" query-string))]
+    (response/redirect (str (system/site-url) "/auth/login?redirect=" (codec/url-encode target)))))
+
+(defn data-app
+  "`/embed/apps/:name` iframe entrypoint. Served only when the `:data-apps-preview` feature is
+   enabled; without it, responds nil so routing falls through to the generic embed handler — the
+   instance then behaves exactly as if data apps did not exist, keeping the feature gate with the
+   data-app entrypoint rather than in the top-level route table. A signed-out visitor is sent to
+   the login page: the document's CSP carries the app's `allowed_hosts`, which only signed-in
+   users may see."
+  [request respond raise]
+  (cond
+    (not (premium-features/enable-data-apps?)) (respond nil)
+    (nil? (:metabase-user-id request))         (respond (login-redirect request))
+    :else                                      (data-app-shell request respond raise)))

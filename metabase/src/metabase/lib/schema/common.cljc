@@ -1,0 +1,512 @@
+(ns metabase.lib.schema.common
+  (:refer-clojure :exclude [update-keys #?@(:clj [some])])
+  (:require
+   [clojure.string :as str]
+   [medley.core :as m]
+   [metabase.types.core]
+   [metabase.util :as u]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.memoize :as u.memo]
+   [metabase.util.performance :refer [update-keys every-key? #?@(:clj [some])]]))
+
+(comment metabase.types.core/keep-me)
+
+#?(:clj (set! *warn-on-reflection* true))
+
+(defn normalize-keyword
+  "Base normalization behavior for something that should be a keyword: calls [[clojure.core/keyword]] on it if it is a
+  string. This is preferable to using [[clojure.core/keyword]] directly, because that will be tried on things that
+  should not get converted to keywords, like numbers."
+  [x]
+  (cond-> x
+    (string? x) keyword))
+
+(defn normalize-keyword-lower
+  "Base normalization behavior for something that should be a keyword: calls [[clojure.core/keyword]] on it if it is a
+  string. This is preferable to using [[clojure.core/keyword]] directly, because that will be tried on things that
+  should not get converted to keywords, like numbers."
+  [x]
+  (cond-> x
+    (string? x) (-> u/lower-case-en keyword)))
+
+(defn normalize-map-no-kebab-case
+  "Part of [[normalize-map]]; converts keys to keywords but DOES NOT convert to `kebab-case`."
+  [m]
+  (when (map? m)
+    (let [m (update-keys m keyword)]
+      (cond-> m
+        (string? (:lib/type m)) (update :lib/type keyword)))))
+
+;;; TODO (Cam 8/12/25) -- this doesn't really do what I'd expect with keys like `:-` or `:-a` or `:a-` -- it strips
+;;; out preceding and trailing dashes
+(def ^{:arglists '([k])} memoized-kebab-key
+  "Calculating the kebab-case version of a key every time is pretty slow (even with the LRU caching
+  [[u/->kebab-case-en]] has), since the keys here are static and finite we can just memoize them forever and
+  get a nice performance boost."
+  (u.memo/fast-memo
+   (fn [k]
+     ;; sanity check: make sure we're not accidentally using this on a base type
+     (assert (not= k :type/Text))
+     ;; don't use [[u/->kebab-case-en]] here because it converts stuff like `:SuM` to `:su-m` which is not really what
+     ;; we want
+     (-> k
+         u/qualified-name
+         (str/replace #"_" "-")
+         u/lower-case-en
+         keyword))))
+
+(defn map->kebab-case
+  "Convert a map to kebab case, for use with `:decode/normalize`."
+  [m]
+  (when (map? m)
+    (update-keys m memoized-kebab-key)))
+
+(defn normalize-map
+  "Base normalization behavior for a MBQL 5 map: keywordize keys and keywordize `:lib/type`; convert map to
+  kebab-case (excluding the so-called [[HORRIBLE-keys]]."
+  [m]
+  (-> m normalize-map-no-kebab-case map->kebab-case))
+
+(defn internal-key?
+  "True if `k` is a namespaced key outside the `:lib` namespace. These are internal keys the query processor adds to a
+  query as it runs, as opposed to the `:lib/*` and simple keys that make up a query itself. Handles string keys too,
+  since keys are not always keywordized yet when this runs."
+  [k]
+  (let [k (cond-> k (string? k) keyword)]
+    (and (qualified-keyword? k)
+         (not= "lib" (namespace k)))))
+
+(defn remove-internal-keys
+  "For use as a `:decode/deserialize` (and `:encode/serialize`) transformer on a query/stage/join/options map: remove
+  every [[internal-key?]] from map `m`."
+  [m]
+  (if-not (map? m)
+    m
+    (reduce-kv (fn [acc k _v]
+                 (cond-> acc
+                   (internal-key? k) (dissoc k)))
+               m
+               m)))
+
+(defn normalize-string-key
+  "Base normalization behavior for things that should be string map keys. Converts keywords to strings if needed. This
+  is mostly to work around the REST API recursively keywordizing the entire request body by default."
+  [x]
+  (cond-> x
+    (keyword? x) u/qualified-name))
+
+(mr/def ::clause-arg
+  "One arg of an MBQL clause in any normalization state: a literal, a keyword such as a temporal unit, an options map
+   (possibly string-keyed), or a nested clause or sequence of clauses."
+  [:or
+   :nil
+   :keyword
+   :metabase.lib.schema.literal/literal
+   [:ref ::clause-options]
+   [:sequential [:ref ::clause-arg]]])
+
+(mr/def ::any-clause
+  "An MBQL clause `[tag & args]` in any normalization state -- `tag` a keyword, or a string before normalization
+   keywordizes it -- e.g. not yet uuid'd, or still carrying legacy args."
+  [:cat [:or :keyword :string] [:* ::clause-arg]])
+
+(mr/def ::possibly-unnormalized-clause
+  "A (possibly not-yet-normalized) MBQL clause `[tag & args]` -- `tag` a keyword, or a string before normalization
+   keywordizes it -- or a literal value."
+  [:or
+   :metabase.lib.schema.literal/literal
+   ::any-clause])
+
+(mr/def ::clause-tag-candidate
+  "Any value a `:multi` schema dispatches on with [[mbql-clause-tag]], which may or may not be an MBQL clause."
+  [:schema {::mr/deliberately-open true, :description "a value that may be an MBQL clause"} :any])
+
+(mu/defn mbql-clause-tag :- [:maybe :keyword]
+  "If `x` is a (possibly not-yet-normalized) MBQL clause, return its `tag`."
+  [x :- ::clause-tag-candidate]
+  (when (and (vector? x)
+             ((some-fn keyword? string?) (first x)))
+    (keyword (first x))))
+
+;;; TODO (Cam 9/8/25) -- overlapping functionality with [[metabase.lib.util/clause-of-type?]]
+(mu/defn is-clause? :- :boolean
+  "Whether `x` is a (possibly not-yet-normalized) MBQL clause with `tag`. Does not check that the clause is valid."
+  [tag :- :keyword
+   x   :- ::clause-tag-candidate]
+  (= (mbql-clause-tag x) tag))
+
+(mr/def ::non-blank-string
+  "Schema for a string that cannot be blank."
+  [:and
+   {:error/message "non-blank string"
+    :json-schema   {:type "string" :minLength 1}}
+   [:string {:min 1, :decode/normalize (fn [x]
+                                         (cond-> x
+                                           (keyword? x) u/qualified-name))}]
+   [:fn
+    {:error/message "non-blank string"}
+    (complement str/blank?)]])
+
+(mr/def ::positive-number
+  [:fn
+   {:error/message "positive number"}
+   (every-pred number? pos?)])
+
+(mr/def ::visualization-settings
+  "Chart-rendering settings authored by the frontend. The backend stores and echoes them and reads no fixed key set, so
+  the keys are whatever the visualization the user picked needs. This is the `.cljc` equivalent
+  of [[metabase.util.malli.schema/VisualizationSettings]], which we cannot use here because that namespace is `.clj`
+  only."
+  [:map {:closed false, ::mr/deliberately-open true, :description "visualization settings", :decode/normalize normalize-map-no-kebab-case}])
+
+(mr/def ::clause-options
+  "The options map of any MBQL clause, MBQL 5 or legacy, possibly not yet normalized; its keys depend on the clause."
+  [:map {:closed false, ::mr/deliberately-open true, :description "options map of any MBQL clause"}])
+
+(mr/def ::database-details
+  "Connection details for a Database; the `.cljc` equivalent of [[metabase.util.malli.schema/DatabaseDetails]]."
+  [:map {:closed false, ::mr/deliberately-open true, :description "database connection details"}])
+
+(mr/def ::database-settings
+  "A Database's `:settings`; the `.cljc` equivalent of [[metabase.util.malli.schema/DatabaseSettings]]."
+  [:map {:closed false, ::mr/deliberately-open true, :description "database settings"}])
+
+(mr/def ::exception-data
+  "The `ex-data` of an exception; the `.cljc` equivalent of [[metabase.util.malli.schema/ExceptionData]]."
+  [:map {:closed false, ::mr/deliberately-open true, :description "exception data"}])
+
+(mr/def ::field-value
+  "One value of a Field; the `.cljc` equivalent of [[metabase.util.malli.schema/FieldValue]]."
+  [:maybe [:or :string number? :boolean uuid? #?(:clj [:fn {:error/message "instance of java.time.temporal.Temporal"}
+                                                       #(instance? java.time.temporal.Temporal %)])]])
+
+(mr/def ::uuid
+  [:string
+   {:decode/normalize (fn [x]
+                        (cond-> x
+                          (uuid? x) str))
+    ;; TODO -- should this be stricter?
+    :min 36
+    :max 36}])
+
+(defn- semantic-type? [x]
+  (isa? x :Semantic/*))
+
+(mr/def ::semantic-type
+  [:and
+   [:keyword
+    {:decode/normalize normalize-keyword}]
+   [:fn
+    {:error/message "valid semantic type"
+     :error/fn      (fn [{:keys [value]} _]
+                      (str "Not a valid semantic type: " (pr-str value)))}
+    semantic-type?]])
+
+(defn- relation-type? [x]
+  (isa? x :Relation/*))
+
+(mr/def ::relation-type
+  [:and
+   [:keyword
+    {:decode/normalize normalize-keyword}]
+   [:fn
+    {:error/message "valid relation type"
+     :error/fn      (fn [{:keys [value]} _]
+                      (str "Not a valid relation type: " (pr-str value)))}
+    relation-type?]])
+
+(mr/def ::semantic-or-relation-type
+  [:and
+   {:description "valid semantic or relation type"}
+   [:keyword
+    {:decode/normalize normalize-keyword}]
+   [:fn
+    {:error/message "valid semantic or relation type"
+     :error/fn      (fn [{:keys [value]} _]
+                      (str "Not a valid semantic or relation type: " (pr-str value)))}
+    (some-fn semantic-type? relation-type?)]])
+
+(defn- base-type? [x]
+  (isa? x :type/*))
+
+;;; only support fixing really broken types like `:type/creationtime` to `:type/CreationTime` in prod... Malli checks
+;;; will throw in dev. See [[metabase.lib.schema.common-test/normalize-base-type-test]] for more info
+
+(mu/defn- normalize-base-type* :- [:maybe [:ref ::base-type]]
+  [x :- [:or :nil :string :keyword]]
+  (normalize-keyword x))
+
+(defn normalize-base-type
+  "Normalize `x` to a base type keyword, repairing the lower-cased type names some prod fingerprints were stored
+  under (#63397). Returns `nil` if it isn't keyword-able."
+  [x]
+  (when-let [k (normalize-base-type* x)]
+    (or (cond
+          (isa? k :type/*)
+          k
+
+          (and (= (namespace k) "type")
+               (= (u/lower-case-en (name k)) (name k)))
+          (m/find-first (fn [base-type]
+                          (= (u/lower-case-en (name base-type)) (name k)))
+                        (descendants :type/*)))
+        k)))
+
+(mr/def ::base-type
+  [:and
+   [:keyword
+    {:decode/normalize #'normalize-base-type}]
+   [:fn
+    {:error/message "valid base type"
+     :error/fn      (fn [{:keys [value]} _]
+                      (str "Not a valid base type: " (pr-str value)))}
+    base-type?]])
+
+(defn- coercion-strategy? [x]
+  (isa? x :Coercion/*))
+
+(mr/def ::coercion-strategy
+  [:and
+   [:keyword
+    {:decode/normalize #'normalize-keyword}]
+   [:fn
+    {:error/message "valid coercion strategy"
+     :error/fn      (fn [{:keys [value]} _]
+                      (str "Not a valid coercion strategy: " (pr-str value)))}
+    coercion-strategy?]])
+
+(defn normalize-options-map
+  "Basic normalization behavior for an MBQL clause options map."
+  [m]
+  (let [m (normalize-map m)]
+    (-> m
+        ;; add `:lib/uuid` if it's missing
+        (cond-> (not (:lib/uuid m)) (assoc :lib/uuid (str (random-uuid))))
+        ;; remove deprecated `:ident` key
+        (dissoc :ident))))
+
+(defn- unfussy-sorted-map-compare [x y]
+  (cond
+    (= (type x) (type y))
+    (compare x y)
+
+    (keyword? x)
+    -1
+
+    (keyword? y)
+    1
+
+    :else
+    (compare (str x) (str y))))
+
+(defn unfussy-sorted-map
+  "Like [[clojure.core/sorted-map]] but unfussy if you try to [[get]] a keyword in a string-keyed map or [[get]] a
+  string in a keyword-keyed map."
+  [& kvs]
+  (apply sorted-map-by unfussy-sorted-map-compare kvs))
+
+(defn encode-map-for-hashing
+  "Base encoding for hashing for all MBQL 5 maps.
+
+  - Convert to a sorted map
+  - Remove all namespaced keywords"
+  [m]
+  (when (map? m)
+    (reduce-kv
+     (fn [m k v]
+       (cond-> m
+         (or (= k :lib/type)
+             (not (qualified-keyword? k))) (assoc k v)))
+     (unfussy-sorted-map)
+     m)))
+
+(mu/defn disallowed-keys
+  "Helper for generating a schema to disallow certain keys in a map.
+
+    [:and
+     [:map
+      [:lib/type [:= :mbql.stage/mbql]]]
+     (disallowed-keys {:native \":native is not allowed in an MBQL stage\"})]
+
+    ;; =>
+
+    [:and
+     [:map [:lib/type [:= :mbql.stage/mbql]]]
+     [:fn
+      {:error/message \":native is not allowed in an MBQL stage\"
+       :decode/normalize #(cond-> % (map? %) (dissoc :native))}
+      #(not (when (map? %) (contains? :native)))]]"
+  [k->message :- [:map-of [:enum
+                           :query :source-table :source-card :fields :filter :filters :breakout :aggregation
+                           :limit :order-by :offset :page :args :native :aggregation-idents :breakout-idents
+                           :expression-idents :source-metadata :source-query :type :database :lib/options
+                           :expressions :pivot :joins :ident :lib/expression-name :lib/join-alias :fk-field-id
+                           :binning :field-ref :model/inner-ident :source :source-alias :unit
+                           :metabase.lib.join/join-alias :metabase.lib.field/binning
+                           :metabase.lib.field/temporal-unit :metabase.lib.field/original-effective-type
+                           :metabase.lib.field/simple-display-name
+                           :metabase.lib.query/transformation-added-base-type
+                           :lib/stage-metadata :condition :parameters :dimension :strategy :lib/uuid :lib/type
+                           :model/inner_ident :stages :lib/model-display-name]
+                  :string]]
+  (let [fn-schemas (map (fn [[k message]]
+                          [:fn
+                           {:error/message    message
+                            ;; don't try to normalize something that's not a map, e.g. no `(dissoc 1 :k)` -- this is a
+                            ;; bad value anyway but not our problem to try and fix it
+                            :decode/normalize (fn -normalize [m]
+                                                (cond-> m
+                                                  (map? m) (dissoc k)))}
+                           ;; we only want an error to trigger when input is a map, not if it's `nil` or
+                           ;; something (the `:map` schema can be the one that errors there)
+                           (fn -pred [m]
+                             (if (map? m)
+                               (not (contains? m k))
+                               true))])
+                        k->message)]
+    (if (= (count fn-schemas) 1)
+      (first fn-schemas)
+      (into [:and] fn-schemas))))
+
+(mr/def ::add-alias-info.source-table
+  "Value of the `:metabase.query-processor.util.add-alias-info/source-table` option
+  that [[metabase.query-processor.util.add-alias-info]] adds to a `:field` ref: the ID of the Table the field comes
+  from, the (escaped) alias of the join or source query it comes from, or one of the two sentinel keywords that
+  namespace uses for 'the source query' and 'nowhere in particular'."
+  [:or
+   :string
+   [:ref :metabase.lib.schema.id/table]
+   [:enum
+    :metabase.query-processor.util.add-alias-info/source
+    :metabase.query-processor.util.add-alias-info/none]])
+
+(mr/def ::options
+  [:and
+   {:default {}}
+   [:map
+    {:decode/normalize   #'normalize-options-map
+     :decode/api         #'remove-internal-keys
+     :encode/for-hashing #'encode-map-for-hashing
+     :closed             true}
+    [:lib/uuid ::uuid]
+    ;; these options aren't required for any clause in particular, but if they're present they must follow these schemas.
+    [:base-type      {:optional true} [:maybe ::base-type]]
+    [:effective-type {:optional true} [:maybe ::base-type]]
+    ;; these two different types are currently both stored under one key, but maybe one day we can fix this.
+    [:semantic-type  {:optional true} [:maybe ::semantic-or-relation-type]]
+    [:database-type  {:optional true} [:maybe ::non-blank-string]]
+    [:name           {:optional true} [:maybe ::non-blank-string]]
+    [:display-name   {:optional true} [:maybe ::non-blank-string]]
+    ;; the keys clauses add to a plain options map. Clause-specific option schemas (`::lib.schema.ref/field.options`
+    ;; and friends) declare the rest; they all have to be named here because a map schema strips whatever it doesn't
+    ;; declare.
+    ;;
+    ;; the name an expression is defined under, on the expression's own clause
+    [:lib/expression-name {:optional true} ::non-blank-string]
+    ;; `:contains`/`:starts-with`/`:ends-with` and the other string filters
+    [:case-sensitive      {:optional true} :boolean]
+    ;; `:time-interval`
+    [:include-current     {:optional true} :boolean]
+    ;; the name an aggregation is referenced by
+    [:lib/source-name     {:optional true} ::non-blank-string]
+    [:default             {:optional true} [:ref :metabase.lib.schema.expression/expression]]
+    [:join-alias          {:optional true} [:ref :metabase.lib.schema.join/alias]]
+    [:qp/ignore-coercion {:optional true} :boolean]
+    [:qp/allow-coercion-for-columns-without-integer-qp.add.source-table {:optional true} :boolean]
+    [:qp/native-sandbox-column.force-coercion-strategy {:optional true} [:ref ::coercion-strategy]]
+    [:metabase.query-processor.util.add-alias-info/source-table  {:optional true} [:ref ::add-alias-info.source-table]]
+    [:metabase.query-processor.util.add-alias-info/source-alias  {:optional true} [:maybe :string]]
+    [:metabase.query-processor.util.add-alias-info/desired-alias {:optional true} [:maybe :string]]
+    [:metabase.query-processor.util.add-alias-info/nfc-path      {:optional true} [:sequential :string]]
+    [:metabase.query-processor.util.add-alias-info/resolved      {:optional true} [:ref :metabase.lib.schema.metadata/column]]
+    [:metabase.query-processor.util.transformations.nest-breakouts/externally-remapped-field {:optional true} :boolean]
+    [:metabase.query-processor.middleware.add-remaps/new-field-dimension-id      {:optional true} [:ref :metabase.lib.schema.id/dimension]]
+    [:metabase.query-processor.middleware.add-remaps/original-field-dimension-id {:optional true} [:ref :metabase.lib.schema.id/dimension]]
+    [:metabase.driver.sql.query-processor/forced-alias {:optional true} :boolean]
+    [:metabase.driver.sql.query-processor/add-cast     {:optional true} :keyword]
+    [:metabase.driver.sql.query-processor/wrap-in-case {:optional true} :boolean]
+    [:metabase.driver.sql.parameters.substitution/compiling-field-filter? {:optional true} :boolean]
+    [:metabase.driver.sqlserver/optimized-bucketing? {:optional true} :boolean]
+    [:metabase.driver.mongo.query-processor/join-local {:optional true} [:ref :metabase.lib.schema.join/alias]]
+    [:metabase.mcp.v2.query/keyset {:optional true} :boolean]
+    [:temporal-unit                      {:optional true} [:ref :metabase.lib.schema.temporal-bucketing/unit]]
+    [:inherited-temporal-unit            {:optional true} [:ref :metabase.lib.schema.temporal-bucketing/unit]]
+    [:lib/original-effective-type        {:optional true} [:maybe ::base-type]]
+    [:lib/transformation-added-base-type {:optional true} [:maybe :boolean]]
+    [:source-field                       {:optional true} [:ref :metabase.lib.schema.id/field]]]
+   (disallowed-keys
+    {:ident ":ident is deprecated and should not be included in options maps"})])
+
+(mr/def ::external-op
+  [:map {:closed true}
+   [:lib/type [:= :lib/external-op]]
+   [:operator [:multi {:dispatch string?}
+               [true  :string]
+               [false :keyword]]]
+   [:args     [:schema {:decode/normalize vec} [:sequential [:ref :metabase.lib.common/op-arg]]]]
+   [:options  {:optional true} [:maybe [:ref ::clause-options]]]])
+
+#?(:clj
+   (defn- instance-of-class* [& classes]
+     [:fn {:error/message (str "instance of "
+                               (str/join " or "
+                                         (map #(.getName ^Class %) classes)))}
+      (fn [x]
+        (some (fn [klass]
+                (instance? klass x))
+              classes))]))
+
+#?(:clj
+   (def ^{:arglists '([& classes])} instance-of-class
+     "Convenience for defining a Malli schema for an instance of a particular Class."
+     (memoize instance-of-class*)))
+
+(defn- kebab-cased-key? [k]
+  (and (keyword? k)
+       (not (str/includes? (str k) "_"))))
+
+(defn- kebab-cased-map? [m]
+  (and (map? m)
+       (every-key? kebab-cased-key? m)))
+
+(mr/def ::kebab-cased-map
+  [:fn
+   {:error/message "map with all kebab-cased keys"
+    :error/fn      (fn [{:keys [value]} _]
+                     (if-not (map? value)
+                       "map with all kebab-cased keys"
+                       (str "map with all kebab-cased keys, got: " (pr-str (remove kebab-cased-key? (keys value))))))}
+   kebab-cased-map?])
+
+(def url-encoded-string-regex
+  "Schema for a URL-encoded string
+
+  This matches strings containing:
+
+  - Unreserved characters: letters, digits, hyphens, periods, underscores, tildes
+  - Percent-encoded characters: `%` followed by exactly 2 hex digits"
+  #"(?:[A-Za-z0-9\-._~]|%[0-9A-Fa-f]{2})+")
+
+(def deprecated-lib-key-renames
+  "Map of old long-namespaced keys to their new `:lib/*` equivalents."
+  {:metabase.lib.join/join-alias                      :lib/join-alias
+   :metabase.lib.field/binning                        :lib/binning
+   :metabase.lib.field/temporal-unit                  :lib/temporal-unit
+   :metabase.lib.field/original-effective-type        :lib/original-effective-type
+   :metabase.lib.field/simple-display-name            :lib/simple-display-name
+   :metabase.lib.query/transformation-added-base-type :lib/transformation-added-base-type})
+
+(defn rename-deprecated-lib-keys
+  "Rename old long-namespaced keys like `:metabase.lib.field/temporal-unit` to their short `:lib/*` equivalents.
+  If both old and new key are present, the new key takes precedence and the old key is removed."
+  [m]
+  (reduce-kv
+   (fn [m old-key new-key]
+     (if-some [e (find m old-key)]
+       (cond-> (dissoc m old-key)
+         (not (contains? m new-key))
+         (assoc new-key (val e)))
+       m))
+   m
+   deprecated-lib-key-renames))

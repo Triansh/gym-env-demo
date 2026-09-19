@@ -1,0 +1,91 @@
+import { useMemo } from "react";
+import { t } from "ttag";
+import * as Yup from "yup";
+
+import { getTimelineIcons } from "metabase/common/utils/timelines";
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
+  FormTextarea,
+} from "metabase/forms";
+import { Button } from "metabase/ui";
+import * as Errors from "metabase/utils/errors";
+import type { TimelineData } from "metabase-types/api";
+
+import FormArchiveButton from "../FormArchiveButton";
+
+import { IconField } from "./IconField";
+import { TimelineFormFooter } from "./TimelineForm.styled";
+
+const TIMELINE_SCHEMA = Yup.object({
+  name: Yup.string().required(Errors.required).max(255, Errors.maxLength),
+  description: Yup.string().nullable().max(255, Errors.maxLength),
+  icon: Yup.string().required(Errors.required),
+});
+
+export interface TimelineFormProps {
+  initialValues: TimelineData;
+  onSubmit: (data: TimelineData) => void;
+  onArchive?: () => void;
+  onCancel?: () => void;
+}
+
+const TimelineForm = ({
+  initialValues,
+  onSubmit,
+  onArchive,
+  onCancel,
+}: TimelineFormProps) => {
+  const isNew = initialValues.id == null;
+  const icons = useMemo(() => getTimelineIcons(), []);
+
+  return (
+    <FormProvider
+      initialValues={initialValues}
+      validationSchema={TIMELINE_SCHEMA}
+      onSubmit={onSubmit}
+    >
+      {({ dirty }) => (
+        <Form disabled={!dirty}>
+          <FormTextInput
+            name="name"
+            label={t`Name`}
+            placeholder={t`Product releases`}
+            autoFocus
+            mb="lg"
+          />
+          <FormTextarea
+            name="description"
+            label={t`Description`}
+            minRows={5}
+            mb="lg"
+            nullable
+          />
+          <IconField name="icon" title={t`Default icon`} options={icons} />
+          <TimelineFormFooter>
+            <FormErrorMessage />
+            {!isNew && (
+              <FormArchiveButton onClick={onArchive}>
+                {t`Archive timeline and all events`}
+              </FormArchiveButton>
+            )}
+            <Button type="button" onClick={onCancel}>
+              {t`Cancel`}
+            </Button>
+            <FormSubmitButton
+              label={isNew ? t`Create` : t`Update`}
+              disabled={!dirty}
+              variant="filled"
+            />
+          </TimelineFormFooter>
+        </Form>
+      )}
+    </FormProvider>
+  );
+};
+
+// eslint-disable-next-line import/no-default-export -- deprecated usage
+export default TimelineForm;

@@ -1,0 +1,57 @@
+import { t } from "ttag";
+
+import { getErrorMessage } from "metabase/api/utils";
+import { useToast } from "metabase/common/hooks";
+import { useSetting } from "metabase/settings";
+import { Button, Text } from "metabase/ui";
+
+import { useSendTestEmailMutation } from "../../api/email";
+
+export function SendTestEmailWidget() {
+  const [sendTestEmail, sendTestEmailResult] = useSendTestEmailMutation();
+  const [sendToast] = useToast();
+  const isHosted = useSetting("is-hosted?");
+  const isEmailConfigured = useSetting("email-configured?");
+  const isLoading = sendTestEmailResult.isLoading;
+  if (!isHosted && !isEmailConfigured) {
+    return null;
+  }
+
+  const handleSendTestEmail = async () => {
+    try {
+      await sendTestEmail().unwrap();
+      sendToast({
+        message: t`Email sent!`,
+        toastColor: "feedback-positive",
+      });
+    } catch (error) {
+      sendToast({
+        icon: "warning",
+        toastColor: "feedback-negative",
+        message: getTestEmailErrorMessage(error),
+      });
+    }
+  };
+
+  return (
+    <>
+      {Boolean(sendTestEmailResult.error) && (
+        <Text
+          role="alert"
+          aria-label={getTestEmailErrorMessage(sendTestEmailResult.error)}
+          color="feedback-negative"
+          mb="1rem"
+        >
+          {getTestEmailErrorMessage(sendTestEmailResult.error)}
+        </Text>
+      )}
+      <Button onClick={handleSendTestEmail} disabled={isLoading}>
+        {isLoading ? t`Sending...` : t`Send test email`}
+      </Button>
+    </>
+  );
+}
+
+function getTestEmailErrorMessage(error: any) {
+  return getErrorMessage(error, t`Error sending test email`);
+}

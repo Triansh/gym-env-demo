@@ -1,0 +1,27 @@
+import { t } from "ttag";
+
+import type { MetabaseThemePreset } from "metabase/embedding-sdk/theme";
+import { Radio, Stack } from "metabase/ui";
+
+type Props = {
+  preset: MetabaseThemePreset | undefined;
+  onPresetChange: (themePreset: MetabaseThemePreset) => void;
+};
+
+export const SimpleThemeSwitcherSection = ({
+  preset,
+  onPresetChange,
+}: Props) => {
+  return (
+    <Radio.Group
+      value={preset}
+      // Unjustified type cast. FIXME
+      onChange={(value) => onPresetChange(value as MetabaseThemePreset)}
+    >
+      <Stack gap="sm">
+        <Radio value="light" label={t`Light`} />
+        <Radio value="dark" label={t`Dark`} />
+      </Stack>
+    </Radio.Group>
+  );
+};

@@ -1,0 +1,66 @@
+import { useDisclosure } from "@mantine/hooks";
+import { useState } from "react";
+
+import {
+  SdkQuestion,
+  type SdkQuestionProps,
+} from "embedding-sdk-bundle/components/public/SdkQuestion/SdkQuestion";
+import { CommonSdkStoryWrapper } from "embedding-sdk-bundle/test/CommonSdkStoryWrapper";
+import { Box, Button, Modal, Stack } from "metabase/ui";
+
+// Unjustified type cast. FIXME
+const QUESTION_ID = (window as any).QUESTION_ID || 12;
+
+export default {
+  title: "EmbeddingSDK/SdkQuestion/SaveQuestionForm",
+  component: SdkQuestion,
+  parameters: {
+    layout: "fullscreen",
+  },
+  decorators: [CommonSdkStoryWrapper],
+};
+
+export const Default = {
+  render: function Render(args: SdkQuestionProps) {
+    const [isSaveModalOpen, { toggle, close }] = useDisclosure(false);
+
+    const [isBeforeSaveCalled, setBeforeSaveCalled] = useState(false);
+    const [newQuestionTitle, setNewQuestionTitle] = useState("");
+
+    return (
+      <SdkQuestion
+        onBeforeSave={async () => setBeforeSaveCalled(true)}
+        onSave={(question, context) => {
+          if (context.isNewQuestion) {
+            setNewQuestionTitle(question?.name ?? "");
+          }
+
+          close();
+        }}
+        {...args}
+      >
+        <Box p="xl">
+          <Button onClick={toggle}>Save</Button>
+        </Box>
+
+        {isSaveModalOpen && (
+          <Modal opened={isSaveModalOpen} onClose={close}>
+            <SdkQuestion.SaveQuestionForm onCancel={close} />
+          </Modal>
+        )}
+
+        {!isSaveModalOpen && <SdkQuestion.QuestionVisualization />}
+
+        <Stack p="xl">
+          {isBeforeSaveCalled && <Box>onBeforeSave is called</Box>}
+          {newQuestionTitle && <Box>question saved as {newQuestionTitle}</Box>}
+        </Stack>
+      </SdkQuestion>
+    );
+  },
+
+  args: {
+    questionId: QUESTION_ID,
+    isSaveEnabled: true,
+  },
+};

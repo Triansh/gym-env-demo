@@ -1,0 +1,39 @@
+// Reducers shared between "main" and "public" apps
+
+import { combineReducers } from "@reduxjs/toolkit";
+
+import { Api } from "metabase/api";
+import { dashboardReducers as dashboard } from "metabase/dashboard/reducers";
+import { documentsReducer as documents } from "metabase/documents/documents.slice";
+import { explorationsReducer as explorations } from "metabase/explorations/explorations.slice";
+import { entitiesReducer } from "metabase/metadata-store";
+import * as parameters from "metabase/parameters/reducers";
+import app from "metabase/redux/app";
+import { reducer as auth } from "metabase/redux/auth";
+import { reducer as downloads } from "metabase/redux/downloads";
+import { embed } from "metabase/redux/embed";
+import { reducer as embeddingDataPicker } from "metabase/redux/embedding-data-picker";
+import { modal } from "metabase/redux/ui";
+import { undoReducer as undo } from "metabase/redux/undo";
+import upload from "metabase/redux/uploads";
+
+import { metabotReducer as metabot } from "./metabot/state";
+
+export const commonReducers = {
+  // global reducers
+  app,
+  embed,
+  embeddingDataPicker,
+  undo,
+  entities: entitiesReducer,
+  documents,
+  upload,
+  auth,
+  [Api.reducerPath]: Api.reducer,
+  modal,
+  dashboard,
+  parameters: combineReducers(parameters),
+  downloads,
+  metabot,
+  explorations,
+};

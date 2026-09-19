@@ -1,0 +1,157 @@
+name: Build Uberjar
+
+# This workflow builds the uberjar.
+
+concurrency:
+  group: uberjar-${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
+  cancel-in-progress: false
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: "Optional full-length commit SHA-1 hash"
+        type: string
+        default: ''
+        required: false
+  workflow_call:
+    inputs:
+      commit:
+        description: "Optional full-length commit SHA-1 hash"
+        type: string
+        default: ''
+        required: false
+
+jobs:
+  setup:
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 5
+    outputs:
+      build_editions: ${{ steps.matrix.outputs.build_editions }}
+      java_version: ${{ steps.dependencies.outputs.java_version }}
+      node_version: ${{ steps.dependencies.outputs.node_version }}
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check for existing EE uberjar
+        id: check-ee
+        uses: ./.github/actions/fetch-artifact
+        continue-on-error: true
+        with:
+          commit: ${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
+          edition: ee
+          download: false
+
+      - name: Check for existing OSS uberjar
+        id: check-oss
+        uses: ./.github/actions/fetch-artifact
+        continue-on-error: true
+        with:
+          commit: ${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
+          edition: oss
+          download: false
+
+      - name: Create build matrix
+        id: matrix
+        uses: actions/github-script@v9
+        with:
+          script: | # js
+            const hit = {
+              ee: "${{ steps.check-ee.outputs.fetch-hit }}" === "true",
+              oss: "${{ steps.check-oss.outputs.fetch-hit }}" === "true",
+            };
+
+            // Don't rebuild an edition whose uberjar already exists for this commit.
+            const editions = ['ee', 'oss'].filter((edition) => !hit[edition]);
+
+            core.info(`build: ${editions.join(', ') || '(nothing, both artifacts already exist)'}`);
+
+            core.setOutput('build_editions', JSON.stringify(editions));
+
+      - name: Prepare release scripts
+        if: ${{ contains(github.ref, 'release-x') }}
+        uses: ./.github/actions/prepare-release-scripts
+
+      - name: Get build dependencies
+        if: ${{ contains(github.ref, 'release-x') }}
+        uses: actions/github-script@v9
+        id: dependencies
+        with:
+          script: | # js
+            const { getBuildRequirements, getVersionFromReleaseBranch } = require('${{ github.workspace }}/release/dist/index.cjs');
+
+            const version = getVersionFromReleaseBranch('${{ github.ref }}');
+            const requirements = getBuildRequirements(version);
+
+            core.setOutput('java_version', requirements.java);
+            core.setOutput('node_version', requirements.node);
+
+  build:
+    needs: [setup]
+    if: ${{ needs.setup.outputs.build_editions != '[]' }}
+    name: build (${{ matrix.edition }})
+    runs-on: ${{ vars.DEFAULT_RUNNER_KEY }}
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        edition: ${{ fromJson(needs.setup.outputs.build_editions) }}
+    env:
+      MB_EDITION: ${{ matrix.edition }}
+      INTERACTIVE: false
+      # Faster builds for devs
+      SKIP_LICENSES: ${{ github.event_name == 'pull_request' }}
+      # Emit bundle stats on trunk/release builds (tracked over time) and on PRs
+      # (the bundle-size check reads them for both the PR head and its base ref).
+      EMIT_BUNDLE_STATS: ${{ (github.ref_name == 'master' || startsWith(github.ref_name, 'release-') || github.event_name == 'pull_request') && 'true' || 'false' }}
+    steps:
+      - name: Check out the code
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.commit }}
+      - name: Prepare front-end environment
+        uses: ./.github/actions/prepare-frontend
+        with:
+          node-version: "${{ needs.setup.outputs.node_version || '22' }}"
+      - name: Prepare back-end environment
+        uses: ./.github/actions/prepare-backend
+        with:
+          java-version: "${{ needs.setup.outputs.java_version || 25 }}"
+      - name: Build
+        run: ./bin/build.sh
+      - name: Upload bundle stats
+        if: ${{ matrix.edition == 'ee' && env.EMIT_BUNDLE_STATS == 'true' }}
+        continue-on-error: true
+        uses: actions/upload-artifact@v7
+        with:
+          name: metabase-bundle-stats-${{ matrix.edition }}-${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}
+          path: target/bundle-stats
+          if-no-files-found: warn
+      - name: Verify license files are present in uberjar
+        if: ${{ env.SKIP_LICENSES != 'true' }}
+        run: |
+          echo "Checking for license files in uberjar..."
+          unzip -l ./target/uberjar/metabase.jar | grep -q "license-backend-third-party.txt" || (echo "ERROR: license-backend-third-party.txt not found in uberjar" && exit 1)
+          unzip -l ./target/uberjar/metabase.jar | grep -q "license-frontend-third-party.txt" || (echo "ERROR: license-frontend-third-party.txt not found in uberjar" && exit 1)
+          echo "Both license files found in uberjar"
+      - name: Launch uberjar
+        run: >-
+          java --add-opens java.base/java.nio=ALL-UNNAMED -jar ./target/uberjar/metabase.jar &
+      - name: Wait for Metabase to start
+        timeout-minutes: 5
+        run: while ! curl -s 'http://localhost:3000/api/health' | grep '{"status":"ok"}'; do sleep 1; done
+      - name: Mark with the commit hash
+        run: git rev-parse --short HEAD > COMMIT-ID
+        shell: bash
+      - name: Calculate SHA256 checksum
+        run: sha256sum ./target/uberjar/metabase.jar > SHA256.sum
+        shell: bash
+      - name: Upload JARs as artifact
+        uses: actions/upload-artifact@v7
+        with:
+          # Same key the artifact lookups use, so a build for an explicitly dispatched commit
+          # uploads where `setup` and the containerize workflow go looking for it.
+          name: metabase-${{ matrix.edition }}-${{ inputs.commit || github.event.pull_request.head.sha || github.sha }}-uberjar
+          path: |
+            ./target/uberjar/metabase.jar
+            ./COMMIT-ID
+            ./SHA256.sum

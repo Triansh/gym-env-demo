@@ -1,0 +1,12 @@
+.container {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.clickable {
+  cursor: pointer;
+
+  &:hover {
+    color: var(--mb-color-core-brand);
+  }
+}

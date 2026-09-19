@@ -1,0 +1,503 @@
+(ns metabase.auth-identity.provider
+  "Provider multimethod system for authentication. This namespace defines the core protocol
+  that all authentication providers must implement.
+
+  The provider system uses three multimethods:
+  - validate: Validate credentials before database insert/update (throws on error)
+  - authenticate: Core authentication logic (returns success/failure/redirect)
+  - login!: Complete login orchestration (calls authenticate, creates session)
+
+  Providers are organized in a hierarchy:
+  - ::provider (root) - Base provider with default implementations
+  - ::create-user-if-not-exists - Mixin for SSO providers that auto-provision users
+
+  ## How to Implement a Provider
+
+  Each provider implementation should:
+  1. Use a keyword in the :provider namespace (e.g., :provider/password)
+  2. Declare hierarchy with (auth-identity/derive! :provider/name ::provider/provider)
+  3. For SSO providers that auto-create users, also
+     (auth-identity/derive! :provider/name ::provider/create-user-if-not-exists)
+  4. Implement the authenticate multimethod (required)
+  5. Optionally implement validate for credential validation
+
+  Example:
+    (ns metabase.sso.providers.my-provider
+      (:require [metabase.auth-identity.core :as auth-identity]
+                [metabase.auth-identity.provider :as provider]
+                [methodical.core :as methodical]))
+
+    ;; Declare this provider derives from ::provider/provider
+    (auth-identity/derive! :provider/my-provider ::provider/provider)
+
+    ;; For SSO providers that auto-create users:
+    (auth-identity/derive! :provider/my-provider ::provider/create-user-if-not-exists)
+
+    ;; Implement authentication
+    (methodical/defmethod provider/authenticate :provider/my-provider
+      [_provider request]
+      {:success? true
+       :user-id 123
+       :auth-identity {...}})
+
+    ;; Optional: Implement validation
+    (methodical/defmethod provider/validate :provider/my-provider
+      [_provider auth-identity-data]
+      (when-not (valid? auth-identity-data)
+        (throw (ex-info \"Invalid credentials\" {:error :invalid}))))
+
+  Example provider implementations:
+  - metabase.auth-identity.providers.password (OSS)
+  - metabase.sso.providers.ldap (OSS)
+  - metabase.sso.providers.google (OSS)
+  - metabase-enterprise.sso.providers.jwt (Enterprise)
+  - metabase-enterprise.sso.providers.saml (Enterprise)"
+  (:require
+   [java-time.api :as t]
+   [metabase.auth-identity.db :as auth-identity.db]
+   [metabase.auth-identity.hierarchy :as auth-identity.hierarchy]
+   [metabase.auth-identity.schema :as auth-identity.schema]
+   [metabase.auth-identity.session :as auth-session]
+   [metabase.events.core :as events]
+   [metabase.notification.core :as notification]
+   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.request.schema :as request.schema]
+   [metabase.users.schema :as users.schema]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
+
+;;; -------------------------------------------------- Provider Hierarchy --------------------------------------------------
+
+;; Provider relationships live in [[metabase.auth-identity.hierarchy]] and are declared by individual provider
+;; implementations. Each provider namespace should use (auth-identity/derive! :provider/name ::provider/provider).
+;; SSO providers that auto-provision users should also derive from ::provider/create-user-if-not-exists
+
+;;; -------------------------------------------------- Shared Error Messages --------------------------------------------------
+
+(def ^:private disabled-account-message (deferred-tru "Your account is disabled. Please contact your administrator."))
+(def ^:private disabled-account-snippet (deferred-tru "Your account is disabled."))
+
+;;; -------------------------------------------------- Multimethod: validate --------------------------------------------------
+
+(methodical/defmulti validate
+  "Validate credentials and settings for a provider before insert/update into AuthIdentity.
+   Throws an exception with error details if invalid. This ensures transaction rollback on validation failure.
+   Returns nil if valid.
+
+   This method is called from define-before-insert and define-before-update hooks in the AuthIdentity model.
+
+   Args:
+     provider: Provider keyword (e.g., ::provider/password)
+     auth-identity-data: Map containing :credentials, :metadata, etc.
+
+   Returns:
+     nil if valid
+
+   Throws:
+     ExceptionInfo if validation fails
+
+   Examples:
+     ;; Password provider validates credentials structure
+     (validate ::provider/password {:credentials {:password_hash \"...\" :password_salt \"...\"}})
+     => nil
+
+     ;; Throws if invalid
+     (validate ::provider/password {:credentials {:password_hash nil}})
+     => throws ExceptionInfo"
+  {:arglists '([provider auth-identity-data])}
+  (fn [provider _auth-identity-data]
+    provider)
+  :hierarchy #'auth-identity.hierarchy/hierarchy)
+
+(methodical/defmethod validate ::provider
+  [_provider _auth-identity-data]
+  ;; Default: no validation (SSO providers typically don't need credential validation)
+  nil)
+
+;;; -------------------------------------------------- Multimethod: authenticate --------------------------------------------------
+
+(methodical/defmulti authenticate
+  "Authenticate a login request for a provider. This method handles the complete authentication logic
+   including token validation, credential verification, and user data extraction.
+
+   For token-based providers (JWT, Google OAuth, SAML), this method is responsible for:
+   - Verifying token signatures/validity
+   - Decoding tokens and extracting claims
+   - Validating assertions
+   - Extracting user information from the verified token
+
+   For credential-based providers (password, LDAP), this method verifies credentials against stored
+   or external data.
+
+   For OAuth/OIDC providers without tokens, this method returns redirect instructions to initiate
+   the external authentication flow.
+
+   Args:
+     provider: Provider keyword (e.g., ::provider/password)
+     request: Login request map (varies by provider, contains raw authentication data)
+
+   Returns:
+     Map with one of three result types:
+
+     1. Success (authentication complete):
+        {:success? true
+         :user-id <id>                    ; User ID if user exists
+         :auth-identity <auth-identity>   ; AuthIdentity record if found
+         :user-data <map>                 ; User data for provisioning (SSO providers)
+         :provider-id <string>}           ; Provider-specific identifier (email for password/Google,
+                                          ; DN for LDAP, subject for SAML/JWT)
+
+     2. Redirect needed (OAuth/OIDC flow initiation):
+        {:success? :redirect
+         :redirect-url <url>              ; URL to redirect to external provider
+         :message <string>}               ; Human-readable message
+
+     3. Failure:
+        {:success? false
+         :error <keyword>                 ; Error type (:invalid-credentials, :account-disabled, etc.)
+         :message <string>}               ; Human-readable error message
+
+   Examples:
+     ;; Password authentication
+     (authenticate ::provider/password {:email \"user@example.com\" :password \"secret\"})
+     => {:success? true :user-id 123 :auth-identity {...} :provider-id \"user@example.com\"}
+
+     ;; OAuth flow initiation
+     (authenticate ::provider/google {:redirect-url \"/dashboard\"})
+     => {:success? :redirect :redirect-url \"https://accounts.google.com/oauth/authorize?...\"}
+
+     ;; OAuth callback
+     (authenticate ::provider/google {:code \"abc123\" :state \"xyz\"})
+     => {:success? true :user-data {:email \"user@example.com\" ...} :provider-id \"user@example.com\"}
+
+     ;; Authentication failure
+     (authenticate ::provider/password {:email \"user@example.com\" :password \"wrong\"})
+     => {:success? false :error :invalid-credentials :message \"Password did not match stored password.\"}"
+  {:arglists '([provider request])}
+  (fn [provider _request]
+    provider)
+  :hierarchy #'auth-identity.hierarchy/hierarchy)
+
+(methodical/defmethod authenticate ::provider
+  [provider _request]
+  (throw (ex-info (str "Authentication not implemented for provider: " provider)
+                  {:provider provider})))
+
+(methodical/defmethod authenticate :after ::provider
+  [_provider result]
+  (if (and (:success? result)
+           (:auth-identity result))
+    (let [auth-identity (:auth-identity result)
+          expires-at (:expires_at auth-identity)]
+      (if (and expires-at
+               (t/before? (t/offset-date-time expires-at)
+                          (t/offset-date-time)))
+        (assoc result
+               :success? false
+               :error :authentication-expired
+               :message (deferred-tru "This authentication method has expired. Please contact your administrator."))
+        result))
+    result))
+
+;;; -------------------------------------------------- Multimethod: login! --------------------------------------------------
+
+(methodical/defmulti login!
+  "Complete login flow: authenticate, create/find user if needed, create session.
+
+   This is called AFTER any external verification/redirects are complete and we have an identity
+   assertion. It does NOT handle OAuth redirects, SAML flows, or other external verification steps.
+
+   Args:
+     provider: Provider keyword (e.g., ::provider/password)
+     request: Login request map containing:
+       - Authentication data (credentials, tokens, etc.)
+       - :device-info - Device information for session tracking
+       - :redirect-url - Optional redirect URL after login
+
+   Returns:
+     Map with one of three result types:
+
+     1. Success (authentication complete, session created):
+        {:success? true
+         :session <session-id>           ; Session ID
+         :user <user-record>             ; User record
+         :redirect-url <url>}            ; Suggested redirect URL
+
+     2. Redirect needed (OAuth/OIDC flow initiation, no session yet):
+        {:success? :redirect
+         :redirect-url <url>             ; URL to redirect to external provider
+         :message <string>}              ; Human-readable message
+
+     3. Failure:
+        {:success? false
+         :error <keyword>                ; Error type
+         :message <string>}              ; Human-readable error message
+
+   Examples:
+     ;; Successful password login
+     (login! ::provider/password {:email \"...\" :password \"...\" :device-info {...}})
+     => {:success? true :session \"...\" :user {...} :redirect-url \"/\"}
+
+     ;; OAuth flow initiation
+     (login! ::provider/google {:redirect-url \"/dashboard\" :device-info {...}})
+     => {:success? :redirect :redirect-url \"https://accounts.google.com/oauth/...\"}
+
+     ;; Failed login
+     (login! ::provider/password {:email \"...\" :password \"wrong\" :device-info {...}})
+     => {:success? false :error :invalid-credentials :message \"...\"}"
+  {:arglists '([provider request])}
+  (fn [provider _request]
+    provider)
+  :hierarchy #'auth-identity.hierarchy/hierarchy)
+
+(def ^:private DeviceInfo
+  "Device information for session tracking, as attached to a login request."
+  [:map {:closed true}
+   [:device_id {:optional true} [:maybe ms/NonBlankString]]
+   [:device_description {:optional true} [:maybe ms/NonBlankString]]
+   [:ip_address {:optional true} [:maybe ms/NonBlankString]]
+   [:embedded {:optional true} :boolean]
+   [:token_exchange {:optional true} :boolean]])
+
+(def ^:private UserData
+  "SSO provider-produced data used to create or update a User during login."
+  [:map {:closed true}
+   [:email :string]
+   [:first_name {:optional true} [:maybe :string]]
+   [:last_name {:optional true} [:maybe :string]]
+   [:sso_source {:optional true} :keyword]
+   [:is_active {:optional true} :boolean]
+   [:jwt_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
+   [:login_attributes {:optional true} [:maybe [:map-of :string [:maybe :string]]]]
+   [:provider-id {:optional true} [:maybe :string]]
+   [:tenant_id {:optional true} [:maybe ms/PositiveInt]]
+   [:groups {:optional true} [:maybe [:sequential :string]]]])
+
+(def ^:private login-pipeline-entries
+  "Malli map entries every provider adds to the Ring request threaded through [[apply-inactive-check]] and
+  [[create-session!]] as the login pipeline map."
+  [[:auth-identity {:optional true} [:maybe ::auth-identity.schema/auth-identity]]
+   [:authenticated-user {:optional true} [:maybe (ms/InstanceOfClass clojure.lang.IDeref)]]
+   [:claims {:optional true} [:maybe ms/JWTClaims]]
+   [:code {:optional true} [:maybe :string]]
+   [:device-info {:optional true} [:maybe DeviceInfo]]
+   [:email {:optional true} [:maybe :string]]
+   [:error {:optional true} [:maybe :keyword]]
+   [:jwt-data {:optional true} [:maybe ms/JWTClaims]]
+   [:message {:optional true} [:maybe [:or :string ms/LocalizedString]]]
+   [:oidc-nonce {:optional true} [:maybe :string]]
+   [:oidc-provider {:optional true} [:maybe :keyword]]
+   [:oidc-provider-key {:optional true} [:maybe :string]]
+   [:password {:optional true} [:maybe :string]]
+   [:provider-id {:optional true} [:maybe :string]]
+   [:redirect-uri {:optional true} [:maybe :string]]
+   [:redirect-url {:optional true} [:maybe :string]]
+   [:saml-data {:optional true} [:maybe ms/SAMLAttributes]]
+   [:slack-data {:optional true} [:maybe [:map-of :string :string]]]
+   [:state {:optional true} [:maybe :string]]
+   [:success? {:optional true} [:maybe [:or :boolean [:enum :redirect]]]]
+   [:tenant-attributes {:optional true} [:maybe ms/TenantAttributes]]
+   [:tenant-slug {:optional true} [:maybe :string]]
+   [:token {:optional true} [:maybe :string]]
+   [:user-data {:optional true} [:maybe UserData]]
+   [:user-id {:optional true} [:maybe :int]]
+   [:user-provisioning-enabled? {:optional true} [:maybe :boolean]]
+   [:username {:optional true} [:maybe :string]]])
+
+(mu/defn- apply-inactive-check
+  "Checks if the provided `request` is an attempt to log in an active user, or an inactive one.
+
+  If the user does not have `:is_active true`, the response is not successful and an error message is returned. A
+  request that resolved no user at all is left alone: link-only flows legitimately finish without one."
+  [request :- [:merge
+               ::request.schema/request
+               (into [:map {:closed true}
+                      [:user {:optional true} [:maybe ::users.schema/user]]]
+                     login-pipeline-entries)]]
+  (cond-> request
+    (and (nil? (:error request))
+         (:user request)
+         (not (get-in request [:user :is_active]))) (assoc :success? false
+                                                           :error disabled-account-snippet
+                                                           :message disabled-account-message)))
+
+(mu/defn- create-session!
+  "Create a new session for a user with the given provider.
+   Updates the last_used_at timestamp on the corresponding AuthIdentity."
+  [request :- [:merge
+               ::request.schema/request
+               (into [:map {:closed true}
+                      [:user ::users.schema/user]]
+                     login-pipeline-entries)]
+   provider :- :keyword]
+  (if-not (get-in request [:user :is_active])
+    (assoc request :success? false
+           :error disabled-account-snippet
+           :message disabled-account-message)
+    (let [{:keys [user device-info saml-data]} request
+          session (auth-session/create-session-with-auth-tracking!
+                   user device-info provider nil
+                   ;; SAML logins carry the IdP's own identifiers; single logout needs them to
+                   ;; name the session and subject to end. Other providers have none and store NULL.
+                   {:saml-session-index  (:session-index saml-data)
+                    :saml-name-id        (:name-id saml-data)
+                    :saml-name-id-format (:name-id-format saml-data)})]
+      (assoc request :session session))))
+
+(methodical/defmethod login! ::provider
+  [provider request]
+  (cond
+    (= :redirect (:success? request))
+    request
+
+    (not (:success? request))
+    request
+
+    next-method
+    (next-method provider request)
+
+    :else
+    (let [redirect-url (or (:redirect-url request) "/")]
+      (assoc request
+             :success? true
+             :redirect-url redirect-url))))
+
+(defenterprise apply-mfa-gate
+  "Decide whether a successful first-factor login must complete a second factor before a session is
+  created. OSS has no native MFA, so the login result passes through unchanged."
+  metabase-enterprise.mfa.core
+  [_provider login-result]
+  login-result)
+
+;; TODO: (bshepherdson, 2026-09-04) Only a sharp-eyed code reviewer caught that `:mfa/enroll?` had been introduced
+;; but not added to this blocklist. The consumers of [[authenticate-owned-keys]] should be switched to an allowlist
+;; using `select-keys`, rather than `dissoc`ing all the bad fields.
+(def ^:private authenticate-owned-keys
+  [:user-id :user_id :user :user-data :auth-identity :provider-id :success? :session
+   :error :message :mfa/enroll? :mfa/pending? :mfa/methods :mfa/first-factor
+   :jwt-data :claims
+   :tenant-slug :tenant-attributes :user-provisioning-enabled?])
+
+(methodical/defmethod login! :around ::provider
+  [provider request]
+  (as-> (merge (apply dissoc request authenticate-owned-keys)
+               (authenticate provider request)) $
+    (cond-> $
+      (true? (:success? $))
+      (assoc :user
+             (or (when-let [user-id (:user-id $)]
+                   (if (pos-int? user-id)
+                     (auth-identity.db/user-login-columns user-id)
+                     (log/errorf "Provider %s returned a non-positive-int :user-id (type %s); refusing to resolve a user."
+                                 provider (some-> user-id class .getName))))
+                 (when-let [email (get-in $ [:user-data :email])]
+                   (auth-identity.db/user-login-columns-by-email email)))))
+    (cond-> $
+      (and (:provider-id $) (:user-data $))
+      (assoc-in [:user-data :provider-id] (:provider-id $)))
+    ;; run the whole provisioning chain (tenant creation, user create/update, group sync) in one
+    ;; transaction: a failure partway through (e.g. a tenant-group assignment rejected because the
+    ;; user's tenant assignment was lost) must not leave a half-provisioned account behind (UXW-4898)
+    (t2/with-transaction [_]
+      (next-method provider $))
+    (apply-inactive-check $)
+    (apply-mfa-gate provider $)
+    (cond-> $
+      (and (true? (:success? $))
+           (:user $)
+           (not (:mfa/pending? $))) (create-session! provider))
+    (select-keys $ [:success? :user :redirect-url :error :message :user-data :session :jwt-data :claims
+                    :oidc-provider-key :mfa/enroll? :mfa/pending? :mfa/methods :mfa/first-factor])))
+
+(defenterprise sso-user-fields
+  "Return the list of User model fields that should be populated from SSO user data.
+   OSS version includes basic fields. Enterprise version includes login_attributes and jwt_attributes."
+  metabase-enterprise.auth-identity.provider
+  []
+  [:email :first_name :last_name :sso_source])
+
+(mu/defn update-user!
+  "Updates a user from user-data in the request"
+  [{user-id :id} :- ::users.schema/user
+   user-data     :- UserData
+   provider      :- :keyword]
+  (t2/with-transaction [_]
+    (let [reactivating? (and (:is_active user-data)
+                             (not (auth-identity.db/user-active? user-id)))]
+      (auth-identity.db/update-user! user-id
+                                     (cond-> (select-keys user-data (conj (sso-user-fields) :is_active))
+                                       reactivating? (assoc :is_superuser false))))
+    (when-not (auth-identity.db/auth-identity-exists? user-id (name provider))
+      (auth-identity.db/insert-auth-identity! (cond-> {:user_id user-id :provider (name provider)}
+                                                (:provider-id user-data) (assoc :provider_id (:provider-id user-data)))))
+    (auth-identity.db/user-login-status user-id)))
+
+(mu/defn- create-user!
+  "Create a user from user-data in the request "
+  [user-data :- UserData
+   provider  :- :keyword]
+  (let [insert-fields (sso-user-fields)]
+    ;; The tenant flow upstream validated the tenant claim and stamped :tenant_id into user-data. If
+    ;; the field list would strip it here (e.g. a premium-feature check flapped mid-request, or the
+    ;; enterprise implementation isn't registered yet), inserting anyway would create a non-tenant
+    ;; user that can never log in with its tenant claim again (UXW-4898) — refuse instead
+    (when (and (:tenant_id user-data)
+               (not (some #{:tenant_id} insert-fields)))
+      (throw (ex-info "Unable to provision SSO user: tenant assignment could not be applied"
+                      {:status-code 500})))
+    (t2/with-transaction [_]
+      (u/prog1
+        (auth-identity.db/insert-user-returning-login-columns! (select-keys user-data insert-fields))
+        (auth-identity.db/insert-auth-identity! (cond-> {:user_id (:id <>) :provider (name provider)}
+                                                  (:provider-id user-data) (assoc :provider_id (:provider-id user-data))))
+        (notification/with-skip-sending-notification true
+          (events/publish-event! :event/user-invited {:object (assoc (auth-identity.db/user (:id <>))
+                                                                     :sso_source (name provider))}))))))
+
+(methodical/defmethod login! ::create-user-if-not-exists
+  [provider request]
+  (let [user (or (when-let [user (:user request)]
+                   (cond-> user
+                     (:user-data request) (update-user! (:user-data request) provider)))
+                 (when-let [user-data (:user-data request)]
+                   (create-user! user-data provider)))
+        redirect-url (or (:redirect-url request) "/")]
+    (assoc request
+           :success? true
+           :user user
+           :redirect-url redirect-url)))
+
+(methodical/prefer-method! #'login! ::provider ::create-user-if-not-exists)
+
+;;; -------------------------------------------------- Helper Functions --------------------------------------------------
+
+(mu/defn provider-string->keyword :- :keyword
+  "Convert a provider string to a provider keyword in the :provider namespace.
+
+   Examples:
+     (provider-string->keyword \"password\")
+     => :provider/password
+
+     (provider-string->keyword \"google\")
+     => :provider/google"
+  [provider-str :- :string]
+  (keyword "provider" provider-str))
+
+(mu/defn provider-keyword->string :- :string
+  "Convert a provider keyword to a string for storage.
+
+   Examples:
+     (provider-keyword->string :provider/password)
+     => \"password\"
+
+     (provider-keyword->string :some-namespace/google)
+     => \"google\""
+  [provider :- :keyword]
+  (name provider))

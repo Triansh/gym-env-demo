@@ -1,0 +1,117 @@
+import _ from "underscore";
+
+import { setupEnterpriseOnlyPlugin } from "__support__/enterprise";
+import {
+  setupPublicCardQueryEndpoints,
+  setupPublicQuestionEndpoints,
+} from "__support__/server-mocks";
+import { mockSettings } from "__support__/settings";
+import { createMockState } from "__support__/state";
+import {
+  renderWithProviders,
+  screen,
+  waitForLoaderToBeRemoved,
+} from "__support__/ui";
+import { Route } from "metabase/router";
+import { registerStaticVisualizations } from "metabase/static-viz/register";
+import type { VisualizationProps } from "metabase/visualizations/types";
+import type { PublicCard, TokenFeatures } from "metabase-types/api";
+import {
+  createMockEmbedDataset,
+  createMockPublicCard,
+  createMockTokenFeatures,
+} from "metabase-types/api/mocks";
+
+import { PublicOrEmbeddedQuestion } from "../PublicOrEmbeddedQuestion";
+
+registerStaticVisualizations();
+
+function VisualizationMock({
+  onUpdateVisualizationSettings,
+  rawSeries,
+}: VisualizationProps) {
+  const [
+    {
+      card,
+      data: { rows },
+    },
+  ] = rawSeries;
+
+  return (
+    <div>
+      <div>
+        {rows[0].map((value, i) => (
+          <span key={i}>
+            {typeof value === "object" ? JSON.stringify(value) : value}
+          </span>
+        ))}
+      </div>
+      <div data-testid="settings">
+        {JSON.stringify(card.visualization_settings)}
+      </div>
+      <button onClick={() => onUpdateVisualizationSettings({ foo: "bar" })}>
+        update settings
+      </button>
+    </div>
+  );
+}
+
+jest.mock(
+  "metabase/visualizations/components/Visualization",
+  () => VisualizationMock,
+);
+
+export type SetupOpts = {
+  hash?: Record<string, string>;
+  search?: Record<string, string>;
+  card?: Partial<PublicCard>;
+  tokenFeatures?: TokenFeatures;
+  questionName: string;
+  uuid: string;
+  enterprisePlugins?: Parameters<typeof setupEnterpriseOnlyPlugin>[0][];
+};
+
+export async function setup(
+  {
+    hash = {},
+    search = {},
+    card,
+    tokenFeatures = createMockTokenFeatures(),
+    questionName,
+    uuid,
+    enterprisePlugins = [],
+  }: SetupOpts = { questionName: "", uuid: "" },
+) {
+  const settings = mockSettings({
+    "token-features": tokenFeatures,
+  });
+
+  enterprisePlugins.forEach((plugin) => {
+    setupEnterpriseOnlyPlugin(plugin);
+  });
+
+  setupPublicQuestionEndpoints(
+    uuid,
+    createMockPublicCard({ ...card, name: questionName }),
+  );
+  setupPublicCardQueryEndpoints(
+    uuid,
+    createMockEmbedDataset({
+      data: { rows: [["John W."]] },
+    }),
+  );
+
+  renderWithProviders(
+    <Route
+      path="public/question/:uuid"
+      element={<PublicOrEmbeddedQuestion />}
+    />,
+    {
+      storeInitialState: createMockState({ settings }),
+      withRouter: true,
+      initialRoute: `public/question/${uuid}${_.isEmpty(search) ? "" : `?${new URLSearchParams(search)}`}${_.isEmpty(hash) ? "" : `#${new URLSearchParams(hash)}`}`,
+    },
+  );
+  expect(await screen.findByText(questionName)).toBeInTheDocument();
+  await waitForLoaderToBeRemoved();
+}

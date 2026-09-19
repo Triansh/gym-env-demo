@@ -1,0 +1,290 @@
+import cx from "classnames";
+import { type MouseEvent, useCallback, useState } from "react";
+import { t } from "ttag";
+
+import { getCollectionName } from "metabase/common/collections/utils";
+import { EllipsifiedCollectionPath } from "metabase/common/components/EllipsifiedPath/EllipsifiedCollectionPath";
+import { EntityIcon } from "metabase/common/components/EntityIcon";
+import { EntityItemName } from "metabase/common/components/EntityItemName";
+import { SortableColumnHeader } from "metabase/common/components/ItemsTable/BaseItemsTable";
+import {
+  ItemNameCell,
+  TBody,
+  Table,
+  TableColumn,
+} from "metabase/common/components/ItemsTable/BaseItemsTable.styled";
+import { Columns } from "metabase/common/components/ItemsTable/Columns";
+import type { ResponsiveProps } from "metabase/common/components/ItemsTable/utils";
+import { Link } from "metabase/common/components/Link";
+import { MarkdownPreview } from "metabase/common/components/MarkdownPreview";
+import { useGetIcon } from "metabase/hooks/use-icon";
+import { useNavigate } from "metabase/router";
+import {
+  Ellipsified,
+  FixedSizeIcon,
+  Flex,
+  Repeat,
+  Skeleton,
+} from "metabase/ui";
+import * as Urls from "metabase/urls";
+import type { SortingOptions } from "metabase-types/api";
+
+import BrowseTableS from "../components/BrowseTable.module.css";
+
+import { trackModelClick } from "./analytics";
+import type { ModelResult, SortColumn } from "./types";
+import { getModelDescription, sortModels } from "./utils";
+
+export interface ModelsTableProps {
+  models?: ModelResult[];
+  /** True if this component is just rendering a loading skeleton */
+  skeleton?: boolean;
+}
+
+export const itemsTableContainerName = "ItemsTableContainer";
+
+const descriptionProps: ResponsiveProps = {
+  hideAtContainerBreakpoint: "sm",
+  containerName: itemsTableContainerName,
+};
+
+const collectionProps: ResponsiveProps = {
+  hideAtContainerBreakpoint: "xs",
+  containerName: itemsTableContainerName,
+};
+
+const DEFAULT_SORTING_OPTIONS: SortingOptions<SortColumn> = {
+  sort_column: "collection",
+  sort_direction: "asc",
+};
+
+export const ModelsTable = ({
+  models = [],
+  skeleton = false,
+}: ModelsTableProps) => {
+  const [sortingOptions, setSortingOptions] = useState(DEFAULT_SORTING_OPTIONS);
+
+  const sortedModels = sortModels(models, sortingOptions);
+
+  /** The name column has an explicitly set width. The remaining columns divide the remaining width. This is the percentage allocated to the collection column */
+  const collectionWidth = 38.5;
+  const descriptionWidth = 100 - collectionWidth;
+
+  const handleUpdateSortOptions = skeleton
+    ? undefined
+    : (newSortingOptions: SortingOptions<SortColumn>) => {
+        setSortingOptions(newSortingOptions);
+      };
+
+  return (
+    <Table aria-label={skeleton ? undefined : t`Table of models`}>
+      <colgroup>
+        {/* <col> for Name column */}
+        <col className={BrowseTableS.nameColumn} />
+
+        {/* <col> for Collection column */}
+        <TableColumn {...collectionProps} width={`${collectionWidth}%`} />
+
+        {/* <col> for Description column */}
+        <TableColumn {...descriptionProps} width={`${descriptionWidth}%`} />
+
+        <Columns.RightEdge.Col />
+      </colgroup>
+      <thead>
+        <tr>
+          <SortableColumnHeader
+            name="name"
+            sortingOptions={sortingOptions}
+            onSortingOptionsChange={handleUpdateSortOptions}
+            style={{ paddingInlineStart: ".625rem" }}
+            columnHeaderProps={{
+              style: { paddingInlineEnd: ".5rem" },
+            }}
+          >
+            {t`Name`}
+          </SortableColumnHeader>
+          <SortableColumnHeader
+            name="collection"
+            sortingOptions={sortingOptions}
+            onSortingOptionsChange={handleUpdateSortOptions}
+            {...collectionProps}
+            columnHeaderProps={{
+              style: {
+                paddingInline: ".5rem",
+              },
+            }}
+          >
+            <Ellipsified>{t`Collection`}</Ellipsified>
+          </SortableColumnHeader>
+          <SortableColumnHeader
+            name="description"
+            {...descriptionProps}
+            columnHeaderProps={{
+              style: {
+                paddingInline: ".5rem",
+              },
+            }}
+          >
+            {t`Description`}
+          </SortableColumnHeader>
+          <Columns.RightEdge.Header />
+        </tr>
+      </thead>
+      <TBody>
+        {skeleton ? (
+          <Repeat times={7}>
+            <ModelRow />
+          </Repeat>
+        ) : (
+          sortedModels.map((model: ModelResult) => (
+            <ModelRow model={model} key={model.id} />
+          ))
+        )}
+      </TBody>
+    </Table>
+  );
+};
+
+function SkeletonText() {
+  return <Skeleton natural h="16.8px" />;
+}
+
+function stopPropagation(event: MouseEvent) {
+  event.stopPropagation();
+}
+
+function preventDefault(event: MouseEvent) {
+  event.preventDefault();
+}
+
+const ModelRow = ({ model }: { model?: ModelResult }) => {
+  const navigate = useNavigate();
+
+  const handleClick = useCallback(
+    (event: MouseEvent) => {
+      if (!model) {
+        return;
+      }
+
+      // do not trigger click when selecting text
+      const selection = document.getSelection();
+      if (selection?.type === "Range" && selection?.toString().length > 0) {
+        event.stopPropagation();
+        return;
+      }
+
+      const { id, name } = model;
+      const url = Urls.model({ id, name, type: "model" });
+      const subpathSafeUrl = Urls.getSubpathSafeUrl(url);
+
+      trackModelClick(model.id);
+
+      event.preventDefault();
+      event.stopPropagation();
+
+      if ((event.ctrlKey || event.metaKey) && event.button === 0) {
+        Urls.openInNewTab(subpathSafeUrl);
+      } else {
+        navigate(url);
+      }
+    },
+    [model, navigate],
+  );
+
+  return (
+    <tr
+      className={model ? BrowseTableS.tableRow : BrowseTableS.tableRowSkeleton}
+      onClick={handleClick}
+    >
+      <NameCell model={model} />
+      <CollectionCell model={model} />
+      <DescriptionCell model={model} />
+      <Columns.RightEdge.Cell />
+    </tr>
+  );
+};
+
+function NameCell({ model }: { model?: ModelResult }) {
+  const getIcon = useGetIcon();
+  const headingId = `model-${model?.id || "dummy"}-heading`;
+  const icon = getIcon(model ?? { model: "dataset" }) ?? { name: "folder" };
+  const name = <EntityItemName name={model?.name || ""} />;
+  return (
+    <ItemNameCell data-testid="model-name" aria-labelledby={headingId}>
+      <Flex id={headingId} align="center" gap="0.5rem" ps="1.4rem" pe="0.5rem">
+        <EntityIcon
+          size="1rem"
+          {...icon}
+          color="icon-brand"
+          style={{ flexShrink: 0 }}
+        />
+        {model ? (
+          <Link
+            to={Urls.model({ id: model.id, name: model.name, type: "model" })}
+            onClick={preventDefault}
+            style={{ overflow: "hidden" }}
+          >
+            {name}
+          </Link>
+        ) : (
+          name
+        )}
+      </Flex>
+    </ItemNameCell>
+  );
+}
+
+function CollectionCell({ model }: { model?: ModelResult }) {
+  const collectionName = model?.collection
+    ? getCollectionName(model.collection)
+    : t`Untitled collection`;
+
+  const content = (
+    <Flex gap="sm">
+      <FixedSizeIcon name="folder" />
+
+      {model ? (
+        <EllipsifiedCollectionPath collection={model.collection} />
+      ) : (
+        <SkeletonText />
+      )}
+    </Flex>
+  );
+
+  return (
+    <td
+      className={cx(BrowseTableS.collectionCell, BrowseTableS.hideAtXs)}
+      data-testid={`path-for-collection: ${collectionName}`}
+    >
+      {model?.collection ? (
+        <Link
+          className={BrowseTableS.collectionLink}
+          to={Urls.collection(model.collection)}
+          onClick={stopPropagation}
+        >
+          {content}
+        </Link>
+      ) : (
+        content
+      )}
+    </td>
+  );
+}
+
+function DescriptionCell({ model }: { model?: ModelResult }) {
+  return (
+    <td className={cx(BrowseTableS.cell, BrowseTableS.hideAtSm)}>
+      {model ? (
+        <MarkdownPreview
+          lineClamp={12}
+          allowedElements={["strong", "em"]}
+          oneLine
+        >
+          {getModelDescription(model) || ""}
+        </MarkdownPreview>
+      ) : (
+        <SkeletonText />
+      )}
+    </td>
+  );
+}

@@ -1,0 +1,238 @@
+(ns metabase.activity-feed.api
+  (:require
+   [medley.core :as m]
+   [metabase.activity-feed.db :as activity-feed.db]
+   [metabase.activity-feed.models.recent-views :as recent-views]
+   [metabase.api.common :as api :refer [*current-user-id*]]
+   [metabase.api.macros :as api.macros]
+   [metabase.models.interface :as mi]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]
+   [toucan2.core :as t2]))
+
+(defn- models-query
+  [model ids]
+  (case model
+    "card"      (activity-feed.db/recent-cards ids)
+    "dashboard" (activity-feed.db/recent-dashboards ids)
+    "table"     (activity-feed.db/recent-tables ids)))
+
+(defn- models-for-views
+  "Returns a map of {model {id instance}} for activity views suitable for looking up by model and id to get a model."
+  [views]
+  (let [grouped (group-by :model views)
+        ;; We perform selects for each model type separately, but then bring them back into a flat list to hydrate
+        ;; with moderation_reviews data all at once.
+        items (mapcat (fn [[model views']]
+                        (when (seq views')
+                          (->> (models-query model (map :model_id views'))
+                               (mapv #(assoc % :model model)))))
+                      grouped)
+        items (->> (t2/hydrate items :moderation_reviews)
+                   (map (fn [{:keys [moderation_reviews] :as item}]
+                          (let [status (some #(when (:most_recent %) (:status %)) moderation_reviews)]
+                            (assoc item :moderated_status status)))))]
+    ;; Now group the flat list of items into a map.
+    (update-vals (group-by :model items) #(m/index-by :id %))))
+
+(defn- views-and-runs
+  "Query implementation for `popular_items`. Tables and Dashboards have a query limit of `views-limit`.
+  Cards have a query limit of `card-runs-limit`.
+
+  The expected output of the query is a single row per unique model viewed by the current user including a `:max_ts` which
+  has the most recent view timestamp of the item and `:cnt` which has total views. We order the results by most recently
+  viewed then hydrate the basic details of the model. Bookmarked cards and dashboards are *not* included in the result.
+
+  Viewing a Dashboard will add entries to the view log for all cards on that dashboard so all card views are instead derived
+  from the query_execution table. The query context is always a `:question`. The results are normalized and concatenated to the
+  query results for dashboard and table views."
+  [views-limit card-runs-limit]
+  (let [dashboard-and-table-views (activity-feed.db/recent-dashboard-and-table-views views-limit)
+        card-runs                 (->> (activity-feed.db/recent-card-runs card-runs-limit)
+                                       (mapv #(-> %
+                                                  (dissoc :row_count)
+                                                  (assoc :model "card"))))]
+    (->> (into card-runs dashboard-and-table-views)
+         (sort-by :max_ts #(compare %2 %1)))))
+
+(def ^:private views-limit 8)
+(def ^:private card-runs-limit 8)
+
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/recent_views"
+  "Get a list of 100 models (cards, models, tables, dashboards, and collections) that the current user has been viewing most
+  recently. Return a maximum of 20 model of each, if they've looked at at least 20."
+  {:deprecated true}
+  []
+  {:recent_views (:recents (recent-views/get-recents *current-user-id* [:views]))})
+
+;; TODO (Cam 10/28/25) -- fix this endpoint so it uses kebab-case for query parameters for consistency with the rest
+;; of the REST API
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-query-params-use-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/recents"
+  "Get a list of recent items the current user has been viewing most recently under the `:recents` key.
+  Allows for filtering by context: views or selections"
+  [_route-params
+   {:keys [context include_metadata]} :- [:map {:closed true}
+                                          [:context (ms/QueryVectorOf [:enum :selections :views])]
+                                          [:include_metadata {:default false} [:maybe :boolean]]]]
+  (when-not (seq context) (throw (ex-info "context is required." {})))
+  (recent-views/get-recents *current-user-id* context {:include-metadata? include_metadata}))
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :post "/recents"
+  "Adds a model to the list of recently selected items."
+  [_route-params
+   _query-params
+   {:keys [model model_id context]} :- [:map {:closed true}
+                                        [:model    (into [:enum] recent-views/rv-models)]
+                                        [:model_id ms/PositiveInt]
+                                        [:context  [:enum :selection]]]]
+  (let [model-id     model_id
+        model-type   (recent-views/rv-model->model model)
+        exists?      (case model-type
+                       :model/Card       (activity-feed.db/card-exists? model-id)
+                       :model/Dashboard  (activity-feed.db/dashboard-exists? model-id)
+                       :model/Table      (activity-feed.db/table-exists? model-id)
+                       :model/Collection (activity-feed.db/collection-exists? model-id)
+                       :model/Document   (activity-feed.db/document-exists? model-id))
+        entity       (fn [] (case model-type
+                              :model/Card       (activity-feed.db/card model-id)
+                              :model/Dashboard  (activity-feed.db/dashboard model-id)
+                              :model/Table      (activity-feed.db/table model-id)
+                              :model/Collection (activity-feed.db/collection model-id)
+                              :model/Document   (activity-feed.db/document model-id)))]
+    (when-not exists?
+      (throw (ex-info "Model not found" {:model model :model_id model-id})))
+    (api/read-check (entity))
+    (recent-views/update-users-recent-views! *current-user-id* model-type model-id context)))
+
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/most_recently_viewed_dashboard"
+  "Get the most recently viewed dashboard for the current user. Returns a 204 if the user has not viewed any dashboards
+   in the last 24 hours."
+  []
+  (if-let [dashboard-id (recent-views/most-recently-viewed-dashboard-id *current-user-id*)]
+    (let [dashboard (-> (activity-feed.db/dashboard dashboard-id)
+                        api/check-404
+                        (t2/hydrate [:collection :is_personal]))]
+      (if (mi/can-read? dashboard)
+        dashboard
+        api/generic-204-no-content))
+    api/generic-204-no-content))
+
+(defn- official?
+  "Returns true if the item belongs to an official collection. False otherwise. Assumes that `:authority_level` exists
+  if the item can be placed in a collection."
+  [{:keys [authority_level]}]
+  (boolean
+   (when authority_level
+     (#{"official"} authority_level))))
+
+(defn- verified?
+  "Return true if the item is verified, false otherwise. Assumes that `:moderated_status` is hydrated."
+  [{:keys [moderated_status]}]
+  (= moderated_status "verified"))
+
+(defn- score-items
+  [items]
+  (when (seq items)
+    (let [n-items (count items)
+          max-count (apply max (map :cnt items))]
+      (map-indexed
+       (fn [recency-pos {:keys [cnt model_object] :as item}]
+         (let [verified-wt 1
+               official-wt 1
+               recency-wt 2
+               views-wt 4
+               scores (remove nil?
+                              [;; cards and dashboards? can be 'verified' in enterprise
+                               (when (verified? model_object) verified-wt)
+                               ;; items may exist in an 'official' collection in enterprise
+                               (when (official? model_object) official-wt)
+                               ;; most recent item = 1 * recency-wt, least recent item of 10 items = 1/10 * recency-wt
+                               (when-not (zero? n-items)
+                                 (* (/ (- n-items recency-pos) n-items) recency-wt))
+                               ;; item with highest count = 1 * views-wt, lowest = item-view-count / max-view-count * views-wt
+
+                               ;; NOTE: the query implementation `views-and-runs` has an order-by clause using most recent timestamp
+                               ;; this has an effect on the outcomes. Consider an item with a massively high viewcount but a last view by the user
+                               ;; a long time ago. This may not even make it into the first 10 items from the query, even though it might be worth showing
+                               (when-not (zero? max-count)
+                                 (* (/ cnt max-count) views-wt))])]
+           (assoc item :score (double (reduce + scores))))) items))))
+
+(def ^:private model->precedence
+  {"dashboard"  0
+   "card"       1
+   "dataset"    2
+   "metric"     3
+   "table"      4
+   "collection" 5})
+
+(mu/defn get-popular-items-model-and-id :- [:sequential recent-views/Item]
+  "Returns the 'popular' items for the current user. This is a list of 5 items that the user has viewed recently.
+   The items are sorted by a weighted score that takes into account the total count of views, the recency of the view,
+   whether the item is 'official' or 'verified', and more."
+  []
+  ;; we do a weighted score which incorporates:
+  ;; - total count -> higher = higher score
+  ;; - recently viewed -> more recent = higher score
+  ;; - official/verified -> yes = higher score
+  (let [views            (views-and-runs views-limit card-runs-limit)
+        model->id->items (models-for-views views)
+        filtered-views   (for [{:keys [model model_id] :as view-log} views
+                               :let [model-object (-> (get-in model->id->items [model model_id])
+                                                      (dissoc :dataset_query))]
+                               :when (and model-object
+                                          (mi/can-read? model-object)
+                                          ;; hidden tables, archived cards/dashboards
+                                          (not (or (:archived model-object)
+                                                   (= (:visibility_type model-object) :hidden))))
+                               :let [is-dataset? (= (keyword (:type model-object)) :model)
+                                     is-metric? (= (keyword (:type model-object)) :metric)]]
+                           (cond-> (assoc view-log :model_object model-object)
+                             is-dataset? (assoc :model "dataset")
+                             is-metric? (assoc :model "metric")))
+        scored-views     (score-items filtered-views)]
+    (->> scored-views
+         (sort-by
+          ;; sort by model first, and then score when they are the same model
+          (juxt #(-> % :model model->precedence) #(- (% :score))))
+         (take 5)
+         (map #(-> %
+                   (assoc :timestamp (:max_ts % ""))
+                   recent-views/fill-recent-view-info)))))
+
+;; TODO (Cam 10/28/25) -- fix this endpoint route to use kebab-case for consistency with the rest of our REST API
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-route-uses-kebab-case
+                      :metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/popular_items"
+  "Get the list of 5 popular things on the instance. Query takes 8 and limits to 5 so that if it finds anything
+  archived, deleted, etc it can usually still get 5. "
+  []
+  {:popular_items (get-popular-items-model-and-id)})

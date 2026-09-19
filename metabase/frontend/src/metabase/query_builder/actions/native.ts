@@ -1,0 +1,180 @@
+import { createAction } from "redux-actions";
+
+import { cardApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import { createThunkAction } from "metabase/redux";
+import type { Dispatch, GetState } from "metabase/redux/store";
+import { settingsApi } from "metabase/settings";
+import type NativeQuery from "metabase-lib/v1/queries/NativeQuery";
+import type {
+  CardId,
+  DatabaseId,
+  NativeQuerySnippet,
+  ParameterValuesConfig,
+  TemplateTag,
+} from "metabase-types/api";
+
+import {
+  OPEN_DATA_REFERENCE_AT_QUESTION,
+  SET_DATA_REFERENCE_STACK,
+  SET_MODAL_SNIPPET,
+  SET_NATIVE_EDITOR_SELECTED_RANGE,
+  SET_SNIPPET_COLLECTION_ID,
+  TOGGLE_DATA_REFERENCE,
+  TOGGLE_SNIPPET_SIDEBAR,
+  TOGGLE_TEMPLATE_TAGS_EDITOR,
+} from "../store/actions";
+import {
+  getDataReferenceStack,
+  getNativeEditorCursorOffset,
+  getNativeEditorSelectedText,
+  getQuestion,
+  getSnippetCollectionId,
+} from "../store/selectors";
+
+import { updateQuestion } from "./core/updateQuestion";
+
+export const toggleDataReference = createAction(TOGGLE_DATA_REFERENCE);
+
+export const setDataReferenceStack = createAction(SET_DATA_REFERENCE_STACK);
+
+export const POP_DATA_REFERENCE_STACK = "metabase/qb/POP_DATA_REFERENCE_STACK";
+export const popDataReferenceStack = createThunkAction(
+  POP_DATA_REFERENCE_STACK,
+  () => (dispatch: Dispatch, getState: GetState) => {
+    const stack = getDataReferenceStack(getState());
+    dispatch(setDataReferenceStack(stack.slice(0, -1)));
+  },
+);
+
+export const PUSH_DATA_REFERENCE_STACK =
+  "metabase/qb/PUSH_DATA_REFERENCE_STACK";
+export const pushDataReferenceStack = createThunkAction(
+  PUSH_DATA_REFERENCE_STACK,
+  (item: unknown) => (dispatch: Dispatch, getState: GetState) => {
+    const stack = getDataReferenceStack(getState());
+    dispatch(setDataReferenceStack(stack.concat([item])));
+  },
+);
+
+export const openDataReferenceAtQuestion = createThunkAction(
+  OPEN_DATA_REFERENCE_AT_QUESTION,
+  (id: CardId) => async (dispatch: Dispatch) => {
+    // forceRefetch: false so a permanently-forbidden card (403) is served from
+    // RTK Query's cache instead of re-hitting /api/card/:id on every open, matching
+    // the former `useCachedForbiddenError` behavior.
+    const card = await runRtkEndpoint(
+      { id, ignore_error: true },
+      dispatch,
+      cardApi.endpoints.getCard,
+      { forceRefetch: false },
+    );
+    if (card) {
+      return [
+        { type: "database", id: card.database_id },
+        { type: "question", id: card.id },
+      ];
+    }
+  },
+);
+
+export const toggleTemplateTagsEditor = createAction(
+  TOGGLE_TEMPLATE_TAGS_EDITOR,
+);
+
+export const toggleSnippetSidebar = createAction(TOGGLE_SNIPPET_SIDEBAR);
+
+export const SET_IS_SHOWING_SNIPPET_SIDEBAR =
+  "metabase/qb/SET_IS_SHOWING_SNIPPET_SIDEBAR";
+export const setIsShowingSnippetSidebar = (
+  isShowingSnippetSidebar: boolean,
+) => ({
+  type: SET_IS_SHOWING_SNIPPET_SIDEBAR,
+  isShowingSnippetSidebar,
+});
+
+export const setNativeEditorSelectedRange = createAction(
+  SET_NATIVE_EDITOR_SELECTED_RANGE,
+);
+
+export const setModalSnippet = createAction(SET_MODAL_SNIPPET);
+
+export const setSnippetCollectionId = createAction(SET_SNIPPET_COLLECTION_ID);
+
+export const openSnippetModalWithSelectedText =
+  () => (dispatch: Dispatch, getState: GetState) => {
+    const state = getState();
+    const content = getNativeEditorSelectedText(state);
+    const collection_id = getSnippetCollectionId(state);
+    dispatch(setModalSnippet({ content, collection_id }));
+  };
+
+export const closeSnippetModal = () => (dispatch: Dispatch) => {
+  dispatch(setModalSnippet(null));
+};
+
+export const insertSnippet =
+  (snippet: NativeQuerySnippet) => (dispatch: Dispatch, getState: GetState) => {
+    const name = snippet.name;
+    const question = getQuestion(getState());
+    if (!question) {
+      return;
+    }
+    // Unjustified type cast. FIXME
+    const query = question.legacyNativeQuery() as NativeQuery;
+    const queryText = query.queryText();
+    const nativeEditorCursorOffset =
+      getNativeEditorCursorOffset(getState()) ?? queryText.length;
+    const nativeEditorSelectedText =
+      getNativeEditorSelectedText(getState()) ?? "";
+    const selectionStart =
+      nativeEditorCursorOffset - nativeEditorSelectedText.length;
+    const newText =
+      queryText.slice(0, selectionStart) +
+      `{{snippet: ${name}}}` +
+      queryText.slice(nativeEditorCursorOffset);
+    const datasetQuery = query.setQueryText(newText).datasetQuery();
+    dispatch(updateQuestion(question.setDatasetQuery(datasetQuery)));
+  };
+
+export const SET_TEMPLATE_TAG = "metabase/qb/SET_TEMPLATE_TAG";
+export const setTemplateTag = createThunkAction(
+  SET_TEMPLATE_TAG,
+  (tag: TemplateTag) => {
+    return (dispatch: Dispatch, getState: GetState) => {
+      const question = getQuestion(getState());
+      if (!question) {
+        return;
+      }
+      // Unjustified type cast. FIXME
+      const query = question.legacyNativeQuery() as NativeQuery;
+      const newQuestion = query.setTemplateTag(tag.name, tag).question();
+      dispatch(updateQuestion(newQuestion));
+    };
+  },
+);
+
+export const SET_TEMPLATE_TAG_CONFIG = "metabase/qb/SET_TEMPLATE_TAG_CONFIG";
+export const setTemplateTagConfig = createThunkAction(
+  SET_TEMPLATE_TAG_CONFIG,
+  (tag: TemplateTag, parameterConfig: ParameterValuesConfig) => {
+    return (dispatch: Dispatch, getState: GetState) => {
+      const question = getQuestion(getState());
+      if (!question) {
+        return;
+      }
+      // Unjustified type cast. FIXME
+      const query = question.legacyNativeQuery() as NativeQuery;
+      const newQuestion = query
+        .setTemplateTagConfig(tag, parameterConfig)
+        .question();
+      dispatch(updateQuestion(newQuestion));
+    };
+  },
+);
+
+export const rememberLastUsedDatabase = (id: DatabaseId) =>
+  settingsApi.endpoints.updateSetting.initiate({
+    key: "last-used-native-database-id",
+    value: id,
+  });

@@ -1,0 +1,174 @@
+import type { Action, Middleware, ThunkDispatch } from "@reduxjs/toolkit";
+import type { ComponentType, ReactNode } from "react";
+import { t } from "ttag";
+
+import noResultsSource from "assets/img/no_results.svg";
+import type { AdminPathKey, State } from "metabase/redux/store";
+import type { UiParameter } from "metabase-lib/v1/parameters/types";
+import type { Dashboard, DraftDashboardSubscription } from "metabase-types/api";
+
+import { definePluginSlot } from "../slot";
+
+import type {
+  SnippetSidebarContext,
+  SnippetSidebarMenuOption,
+  SnippetSidebarRowRenderers,
+} from "./snippets";
+
+// Types
+export type IllustrationValue = {
+  src: string;
+  isDefault: boolean;
+} | null;
+
+interface PluginDashboardSubscriptionParametersSectionOverride {
+  Component?: ComponentType<{
+    className?: string;
+    parameters: UiParameter[];
+    hiddenParameters?: string;
+    dashboard: Dashboard;
+    pulse: DraftDashboardSubscription;
+    setPulseParameters: (parameters: UiParameter[]) => void;
+  }>;
+}
+
+const defaultLandingPageIllustration = {
+  src: "app/img/bridge.svg",
+  isDefault: true,
+};
+
+const defaultLoginPageIllustration = {
+  src: "app/img/bridge.svg",
+  isDefault: true,
+};
+
+const getLoadingMessage = (isSlow: boolean | undefined = false) =>
+  isSlow ? t`Waiting for results...` : t`Doing science...`;
+
+const getDefaultAppInitFunctions = (): (() => void)[] => [];
+
+export const PLUGIN_APP_INIT_FUNCTIONS = definePluginSlot(
+  getDefaultAppInitFunctions,
+);
+
+const getDefaultLandingPage = () => ({
+  getLandingPage: () => "/",
+});
+
+export const PLUGIN_LANDING_PAGE: {
+  getLandingPage: () => string | null | undefined;
+} = definePluginSlot(getDefaultLandingPage);
+
+const getDefaultHomepageSetting = () => ({
+  CustomUrlOption: null,
+});
+
+export const PLUGIN_HOMEPAGE_SETTING: {
+  CustomUrlOption: { label: string; Control: ComponentType } | null;
+} = definePluginSlot(getDefaultHomepageSetting);
+
+// dispatch is typed as thunk-capable so EE middlewares can dispatch async thunks
+const getDefaultReduxMiddlewares = (): Middleware<
+  Record<string, never>,
+  State,
+  ThunkDispatch<State, unknown, Action>
+>[] => [];
+
+export const PLUGIN_REDUX_MIDDLEWARES = definePluginSlot(
+  getDefaultReduxMiddlewares,
+);
+
+const getDefaultLogoIconComponents = (): ComponentType[] => [];
+
+export const PLUGIN_LOGO_ICON_COMPONENTS = definePluginSlot(
+  getDefaultLogoIconComponents,
+);
+
+const getDefaultAdminAllowedPathGetters = (): ((
+  user: any,
+) => AdminPathKey[])[] => [];
+
+export const PLUGIN_ADMIN_ALLOWED_PATH_GETTERS = definePluginSlot(
+  getDefaultAdminAllowedPathGetters,
+);
+
+const getDefaultSelectors = () => ({
+  canWhitelabel: (_state: State) => false,
+  getLoadingMessageFactory: (_state: State) => getLoadingMessage,
+  getIsWhiteLabeling: (_state: State) => false,
+  // eslint-disable-next-line metabase/no-literal-metabase-strings -- This is the actual Metabase name, so we don't want to translate it.
+  getApplicationName: (_state: State) => "Metabase",
+  getShowMetabaseLinks: (_state: State) => true,
+  getLoginPageIllustration: (_state: State): IllustrationValue => {
+    return defaultLoginPageIllustration;
+  },
+  getLandingPageIllustration: (_state: State): IllustrationValue => {
+    return defaultLandingPageIllustration;
+  },
+  getNoDataIllustration: (_state: State): string | null => {
+    return noResultsSource;
+  },
+  getNoObjectIllustration: (_state: State): string | null => {
+    return noResultsSource;
+  },
+});
+
+export const PLUGIN_SELECTORS = definePluginSlot(getDefaultSelectors);
+
+const getDefaultFormWidgets = (): Record<string, ComponentType<any>> => ({});
+
+export const PLUGIN_FORM_WIDGETS = definePluginSlot(getDefaultFormWidgets);
+
+const getDefaultSnippetSidebarPlusMenuOptions = (): ((
+  snippetSidebar: SnippetSidebarContext,
+) => SnippetSidebarMenuOption)[] => [];
+const getDefaultSnippetSidebarRowRenderers =
+  (): SnippetSidebarRowRenderers => ({
+    collection: null,
+  });
+const getDefaultSnippetSidebarHeaderButtons = (): ((
+  snippetSidebar: SnippetSidebarContext,
+  opts: { className?: string },
+) => ReactNode)[] => [];
+
+export const PLUGIN_SNIPPET_SIDEBAR_PLUS_MENU_OPTIONS = definePluginSlot(
+  getDefaultSnippetSidebarPlusMenuOptions,
+);
+export const PLUGIN_SNIPPET_SIDEBAR_ROW_RENDERERS = definePluginSlot(
+  getDefaultSnippetSidebarRowRenderers,
+);
+export const PLUGIN_SNIPPET_SIDEBAR_HEADER_BUTTONS = definePluginSlot(
+  getDefaultSnippetSidebarHeaderButtons,
+);
+
+const getDefaultDashboardSubscriptionParametersSectionOverride =
+  (): PluginDashboardSubscriptionParametersSectionOverride => ({
+    Component: undefined,
+  });
+
+export const PLUGIN_DASHBOARD_SUBSCRIPTION_PARAMETERS_SECTION_OVERRIDE =
+  definePluginSlot(getDefaultDashboardSubscriptionParametersSectionOverride);
+
+const getDefaultReducers = () => ({
+  advancedPermissionsPlugin: () => null,
+  applicationPermissionsPlugin: () => null,
+  sandboxingPlugin: () => null,
+  shared: () => null,
+  documents: () => null,
+  remoteSyncPlugin: () => null,
+});
+
+export const PLUGIN_REDUCERS: {
+  advancedPermissionsPlugin: any;
+  applicationPermissionsPlugin: any;
+  sandboxingPlugin: any;
+  shared: any;
+  documents: any;
+  remoteSyncPlugin: any;
+} = definePluginSlot(getDefaultReducers);
+
+const getDefaultIsEeBuild = () => ({
+  isEEBuild: () => false,
+});
+
+export const PLUGIN_IS_EE_BUILD = definePluginSlot(getDefaultIsEeBuild);

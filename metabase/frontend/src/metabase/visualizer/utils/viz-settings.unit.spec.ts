@@ -1,0 +1,20 @@
+import { BarChart } from "metabase/visualizations/visualizations/BarChart";
+import { Map } from "metabase/visualizations/visualizations/Map/Map";
+import { registerVisualization } from "metabase/viz-core";
+
+import { getColumnVizSettings } from "./viz-settings";
+
+registerVisualization(Map);
+registerVisualization(BarChart);
+
+describe("getColumnVizSettings", () => {
+  it("should return column settings for visualizer supported display", () => {
+    const settings = getColumnVizSettings("bar");
+    expect(settings).toStrictEqual(["graph.dimensions", "graph.metrics"]);
+  });
+
+  it("should return bar column settings for visualizer not supported display", () => {
+    const settings = getColumnVizSettings("map");
+    expect(settings).toStrictEqual(["graph.dimensions", "graph.metrics"]);
+  });
+});

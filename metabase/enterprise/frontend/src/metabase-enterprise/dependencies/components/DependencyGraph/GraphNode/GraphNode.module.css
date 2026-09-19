@@ -1,0 +1,26 @@
+.card {
+  min-width: 15rem;
+  max-width: 30rem;
+
+  &:hover,
+  &.selected {
+    border-color: var(--mb-color-core-brand);
+  }
+}
+
+.card,
+.handle {
+  visibility: hidden;
+
+  &.initialized {
+    visibility: visible;
+  }
+}
+
+.pill {
+  &:hover,
+  &.selected {
+    color: var(--mb-color-core-white);
+    background-color: var(--mb-color-core-brand);
+  }
+}

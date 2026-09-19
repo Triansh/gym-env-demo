@@ -1,0 +1,362 @@
+// This file contains plugins that are needed to make the sdk bundle work.
+
+import type { AsyncThunkAction } from "@reduxjs/toolkit";
+
+import { EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION } from "build-configs/embedding-sdk/constants/versions";
+import {
+  connectToInstanceAuthSso,
+  jwtDefaultRefreshTokenFunction,
+  openSamlLoginPopup,
+  validateSession,
+} from "embedding/auth-common";
+import { getIsLocalhost } from "embedding-sdk-bundle/lib/get-is-localhost";
+import {
+  PLUGIN_EMBEDDING_SDK_AUTH,
+  refreshTokenAsync as refreshTokenAsyncAction,
+} from "embedding-sdk-bundle/store/auth";
+import {
+  getFetchRefreshTokenFn,
+  getSessionTokenState,
+} from "embedding-sdk-bundle/store/selectors";
+import type {
+  SdkDispatch,
+  SdkStoreState,
+} from "embedding-sdk-bundle/store/types";
+import * as MetabaseError from "embedding-sdk-shared/errors";
+import { getSdkPackageVersion } from "embedding-sdk-shared/lib/get-build-info";
+import { getWindow } from "embedding-sdk-shared/lib/get-window";
+import type { MetabaseAuthConfig } from "embedding-sdk-shared/types/auth-config";
+import type { SdkAuthState } from "embedding-sdk-shared/types/auth-state";
+import { SDK_AUTH_STATE_KEY } from "embedding-sdk-shared/types/auth-state";
+import { PLUGIN_API } from "metabase/api/client";
+import {
+  currentUserApi,
+  loadCurrentUser,
+  refetchCurrentUser,
+} from "metabase/current-user";
+import { requestSessionTokenFromEmbedJs } from "metabase/embedding/embedding-iframe-sdk/utils";
+import { getSessionTokenHeaders } from "metabase/embedding/lib/auth/get-session-token-headers";
+import { setApiKeyHeader } from "metabase/embedding/lib/auth/set-api-key-header";
+import {
+  EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG,
+  isEmbeddingEajs,
+  isEmbeddingMcpApp,
+} from "metabase/embedding-sdk/config";
+import { samlTokenStorage } from "metabase/embedding-sdk/lib/saml-token-storage";
+import type { MetabaseEmbeddingSessionToken } from "metabase/embedding-sdk/types/refresh-token";
+import { createAsyncThunk } from "metabase/redux/utils";
+import { refetchSiteSettings, settingsApi } from "metabase/settings";
+import MetabaseSettings from "metabase/utils/settings";
+
+const GET_OR_REFRESH_SESSION = "sdk/token/GET_OR_REFRESH_SESSION";
+
+let refreshTokenPromise: ReturnType<
+  AsyncThunkAction<MetabaseEmbeddingSessionToken | null, unknown, any>
+> | null = null;
+
+// Side effect happening here.
+PLUGIN_EMBEDDING_SDK_AUTH.initAuth = async (
+  authConfig: MetabaseAuthConfig & { isLocalHost?: boolean },
+  { dispatch }: { dispatch: SdkDispatch },
+) => {
+  // MCP Apps inject a session token directly and manage user/settings themselves.
+  if (isEmbeddingMcpApp()) {
+    return;
+  }
+
+  const { metabaseInstanceUrl, apiKey, isLocalHost } = authConfig;
+
+  // remove any stale tokens that might be there from a previous session
+  samlTokenStorage.remove();
+
+  // Resolve the SSO session token (refreshing it when expired) and emit it as
+  // the X-Metabase-Session header. This runs on the refresh-handler slot, which
+  // is ordered after the static auth-header slot, so a freshly refreshed token
+  // applies to the very request that triggered the refresh.
+  const sessionTokenHandler = async () => {
+    const session = await dispatch(getOrRefreshSession(authConfig)).unwrap();
+    return session?.id ? getSessionTokenHeaders(session.id) : undefined;
+  };
+
+  // Check if we can use the auth pre-fetched by the bootstrap chunk
+  const earlyAuthStatus = getAuthState()?.status;
+  if (earlyAuthStatus && earlyAuthStatus !== "skipped") {
+    try {
+      await waitForAuthCompletion();
+    } catch {
+      // Timeout or unexpected error — clear stale state and fall back to normal auth.
+      clearAuthState();
+    }
+    const authState = getAuthState();
+    // Clear the auth state after we read it, so that if `initAuth` is called again it doesn't retry to use the old state
+    clearAuthState();
+
+    if (
+      authState?.status === "completed" &&
+      authState.session &&
+      authState.user &&
+      authState.siteSettings
+    ) {
+      // Store the session token in Redux so getOrRefreshSession finds it
+      // and doesn't trigger a redundant token refresh on the first API call.
+      dispatch(
+        refreshTokenAsyncAction.fulfilled(authState.session, "", {
+          metabaseInstanceUrl: authConfig.metabaseInstanceUrl,
+        }),
+      );
+      dispatch(
+        currentUserApi.util.upsertQueryData(
+          "getCurrentUser",
+          undefined,
+          authState.user,
+        ),
+      );
+      dispatch(
+        settingsApi.util.upsertQueryData(
+          "getSessionProperties",
+          undefined,
+          authState.siteSettings,
+        ),
+      );
+      // Add subscriptions so that the user and settings entries don't get deleted from the cache.
+      // RTK will delete entries with no subscribers if they are invalidated.
+      dispatch(loadCurrentUser());
+      dispatch(settingsApi.endpoints.getSessionProperties.initiate());
+      MetabaseSettings.setAll(authState.siteSettings);
+
+      // The session handler emits the X-Metabase-Session header on every API
+      // call, renewing the token when it expires.
+      PLUGIN_API.onBeforeRequestHandlers.getOrRefreshSessionHandler =
+        sessionTokenHandler;
+
+      return;
+    }
+    // Bootstrap auth failed or returned incomplete data.
+    // We don't throw otherwise the sdk will show the error component, the main bundle logic will
+    // retry its own auth logic and handle the errors if it happens again.
+    console.warn(
+      "SDK: Bootstrap auth did not complete successfully (status: " +
+        (authState?.status ?? "unknown") +
+        "). Falling back to normal auth flow.",
+    );
+  }
+
+  // Setup JWT or API key
+  const isValidInstanceUrl =
+    metabaseInstanceUrl && metabaseInstanceUrl?.length > 0;
+  const isValidApiKeyConfig = apiKey && (isLocalHost || getIsLocalhost());
+
+  if (isValidApiKeyConfig) {
+    // API key setup
+    PLUGIN_API.onBeforeRequestHandlers.setEmbeddingRequestAuthHeaders =
+      setApiKeyHeader(apiKey);
+  } else if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.useExistingUserSession) {
+    // Use existing user session. Do nothing.
+  } else if (isValidInstanceUrl) {
+    // SSO setup. The session handler sets the X-Metabase-Session header on every
+    // request and refreshes the token when it expires; later API calls pick it
+    // up because the handler runs in the request pipeline. Call it once eagerly
+    // to verify the session is valid before the app renders.
+    PLUGIN_API.onBeforeRequestHandlers.getOrRefreshSessionHandler =
+      sessionTokenHandler;
+    try {
+      // verify that the session is actually valid before proceeding
+      await sessionTokenHandler();
+    } catch (e) {
+      // TODO (Oisin 2025-05-27): Fix this. For some reason the instanceof check keeps returning `false`. I'd rather not do this
+      // but due to time constraints this is what we have to do to make sure tests pass.
+      // eslint-disable-next-line metabase/no-literal-metabase-strings -- error checking for better errors. should be improved in the future.
+      if ((e as Error).name === "MetabaseError") {
+        throw e;
+      }
+      // `instanceof Error` is unreliable here (see the TODO above)
+      throw MetabaseError.REFRESH_TOKEN_BACKEND_ERROR(e as Error);
+    }
+  }
+
+  // Fetch user and site settings
+  const [user, siteSettings] = await Promise.all([
+    dispatch(refetchCurrentUser()),
+    dispatch(refetchSiteSettings()),
+  ]);
+
+  if (!user.data) {
+    if (EMBEDDING_SDK_IFRAME_EMBEDDING_CONFIG.useExistingUserSession) {
+      throw MetabaseError.EXISTING_USER_SESSION_FAILED();
+    }
+
+    throw MetabaseError.USER_FETCH_FAILED();
+  }
+  if (!siteSettings.data) {
+    throw MetabaseError.USER_FETCH_FAILED();
+  }
+};
+
+const refreshTokenImpl = async (
+  config: MetabaseAuthConfig,
+  { getState }: { getState: () => unknown },
+): Promise<MetabaseEmbeddingSessionToken | null> => {
+  // Unjustified type cast. FIXME
+  const state = getState() as SdkStoreState;
+
+  if (isEmbeddingEajs()) {
+    return requestSessionTokenFromEmbedJs();
+  }
+
+  const customGetRefreshToken = getFetchRefreshTokenFn(state) ?? undefined;
+
+  const session = await getRefreshToken({
+    ...config,
+    fetchRequestToken: customGetRefreshToken,
+  });
+  validateSession(session);
+
+  return session;
+};
+
+// Thunk used locally in this file, NOT exported
+const refreshTokenAsync = createAsyncThunk(
+  "sdk/token/REFRESH_TOKEN",
+  refreshTokenImpl,
+);
+
+// implementation used by the OSS thunk wrapper
+PLUGIN_EMBEDDING_SDK_AUTH.refreshTokenAsync = refreshTokenImpl;
+
+export const getOrRefreshSession = createAsyncThunk(
+  GET_OR_REFRESH_SESSION,
+  async (authConfig: MetabaseAuthConfig, { dispatch, getState }) => {
+    // necessary to ensure that we don't use a popup every time the user
+    // refreshes the page
+    const storedAuthToken = samlTokenStorage.get();
+    // Unjustified type cast. FIXME
+    const state = getSessionTokenState(getState() as SdkStoreState);
+    /**
+     * @see {@link https://github.com/metabase/metabase/pull/64238#discussion_r2394229266}
+     *
+     * TODO: I think this should be called session overall e.g. state.session
+     */
+    const session = storedAuthToken ?? state?.token;
+
+    const shouldRefreshToken =
+      !session ||
+      (typeof session?.exp === "number" && session.exp * 1000 < Date.now());
+
+    if (!shouldRefreshToken) {
+      return session;
+    }
+
+    if (refreshTokenPromise) {
+      return refreshTokenPromise.unwrap();
+    }
+
+    refreshTokenPromise = dispatch(refreshTokenAsync(authConfig));
+    refreshTokenPromise.finally(() => {
+      refreshTokenPromise = null;
+    });
+
+    return refreshTokenPromise.unwrap();
+  },
+);
+
+const getRefreshToken = async ({
+  metabaseInstanceUrl,
+  preferredAuthMethod,
+  jwtProviderUri,
+  fetchRequestToken: customGetRequestToken,
+}: Pick<
+  MetabaseAuthConfig,
+  "metabaseInstanceUrl" | "fetchRequestToken" | "preferredAuthMethod"
+> & { jwtProviderUri?: string }) => {
+  const shouldSkipSsoDiscovery = jwtProviderUri !== undefined;
+
+  const urlResponseJson = shouldSkipSsoDiscovery
+    ? { method: "jwt", url: jwtProviderUri }
+    : await connectToInstanceAuthSso(metabaseInstanceUrl, {
+        preferredAuthMethod,
+        headers: getSdkRequestHeaders(),
+      });
+
+  const {
+    method,
+    url: responseUrl,
+    hash,
+    "saml-popup-url": samlPopupUrl,
+  } = urlResponseJson || {};
+
+  if (method === "saml") {
+    const sessionToken = await openSamlLoginPopup(
+      responseUrl,
+      metabaseInstanceUrl,
+      samlPopupUrl,
+    );
+
+    samlTokenStorage.set(sessionToken);
+
+    return sessionToken;
+  }
+  if (method === "jwt" && responseUrl) {
+    return jwtDefaultRefreshTokenFunction(
+      responseUrl,
+      metabaseInstanceUrl,
+      getSdkRequestHeaders(hash),
+      customGetRequestToken,
+    );
+  }
+  throw MetabaseError.INVALID_AUTH_METHOD({ method });
+};
+
+function getSdkRequestHeaders(hash?: string): Record<string, string> {
+  return {
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
+    "X-Metabase-Client": "embedding-sdk-react",
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
+    "X-Metabase-Client-Version":
+      getSdkPackageVersion() ?? EMBEDDING_SDK_PACKAGE_UNKNOWN_VERSION,
+    // eslint-disable-next-line metabase/no-literal-metabase-strings -- header name
+    ...(hash && { "X-Metabase-SDK-JWT-Hash": hash }),
+  };
+}
+
+function getAuthState(): SdkAuthState | undefined {
+  return getWindow()?.[SDK_AUTH_STATE_KEY];
+}
+
+function clearAuthState(): void {
+  const win = getWindow();
+  if (win) {
+    delete win[SDK_AUTH_STATE_KEY];
+  }
+}
+
+/**
+ * Wait for the bootstrap auth to be complete.
+ * Polls the window state until it's no longer "in-progress".
+ */
+async function waitForAuthCompletion(
+  timeoutMs: number = 30000,
+): Promise<SdkAuthState> {
+  // early return if already completed
+  if (getAuthState()?.status !== "in-progress") {
+    // Unjustified type cast. FIXME
+    return getAuthState() as SdkAuthState;
+  }
+  const startTime = Date.now();
+  const pollInterval = 10;
+
+  return new Promise((resolve, reject) => {
+    const check = () => {
+      const state = getAuthState();
+      if (state?.status !== "in-progress") {
+        resolve(state!);
+        return;
+      }
+      if (Date.now() - startTime > timeoutMs) {
+        reject(new Error("Timeout waiting for early auth to complete"));
+        return;
+      }
+      setTimeout(check, pollInterval);
+    };
+    check();
+  });
+}

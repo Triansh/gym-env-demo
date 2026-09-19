@@ -1,0 +1,144 @@
+import userEvent from "@testing-library/user-event";
+import type { JSX } from "react";
+
+import { mockSettings } from "__support__/settings";
+import { act, getIcon, renderWithProviders, screen } from "__support__/ui";
+import { SyncedEmbedFrame } from "metabase/public/components/EmbedFrame";
+import { setErrorPage } from "metabase/redux/app";
+import type { AppErrorDescriptor } from "metabase/redux/store";
+import { Route } from "metabase/router";
+
+import PublicApp from "./PublicApp";
+
+type SetupOpts = {
+  name?: string;
+  description?: string;
+  actionButtons?: JSX.Element | null;
+  error?: AppErrorDescriptor;
+  hasEmbedBranding?: boolean;
+  hash?: string;
+};
+
+function setup({
+  error,
+  hasEmbedBranding = true,
+  hash = "",
+  ...embedFrameProps
+}: SetupOpts = {}) {
+  const settings = mockSettings({ "hide-embed-branding?": !hasEmbedBranding });
+
+  const { store } = renderWithProviders(
+    <Route path="/public/dashboard/:id" element={<PublicApp />}>
+      <Route
+        index
+        element={
+          <SyncedEmbedFrame {...embedFrameProps}>
+            <h1 data-testid="test-content">Test</h1>
+          </SyncedEmbedFrame>
+        }
+      />
+    </Route>,
+    {
+      mode: "public",
+      initialRoute: `/public/dashboard/UUID${hash}`,
+      storeInitialState: { settings },
+      withRouter: true,
+    },
+  );
+
+  // `errorPage` is set at runtime by a failed request, after the mount
+  // `LOCATION_CHANGE` that resets it. Seeding it in the initial store would be
+  // cleared by that mount dispatch, so set it the way the app does: afterwards.
+  if (error) {
+    act(() => {
+      store.dispatch(setErrorPage(error));
+    });
+  }
+}
+
+describe("PublicApp", () => {
+  it("renders children", () => {
+    setup();
+    expect(screen.getByTestId("test-content")).toBeInTheDocument();
+  });
+
+  it("renders name", () => {
+    setup({ name: "My Title", description: "My Description" });
+    expect(screen.getByText("My Title")).toBeInTheDocument();
+    expect(screen.queryByText("My Description")).not.toBeInTheDocument();
+  });
+
+  it("renders description", async () => {
+    setup({ name: "My Title", description: "My Description" });
+    await userEvent.hover(getIcon("info"));
+    expect(await screen.findByText("My Description")).toBeInTheDocument();
+  });
+
+  it("renders action buttons", () => {
+    setup({
+      actionButtons: <button key="test">Click Me</button>,
+    });
+    expect(
+      screen.getByRole("button", { name: "Click Me" }),
+    ).toBeInTheDocument();
+  });
+
+  it("renders branding", () => {
+    setup();
+    expect(screen.getByText("Powered by")).toBeInTheDocument();
+  });
+
+  it("renders not found page on error", async () => {
+    setup({ error: { status: 404 } });
+    expect(await screen.findByText("Not found")).toBeInTheDocument();
+    expect(screen.queryByTestId("test-content")).not.toBeInTheDocument();
+  });
+
+  it("renders error message", () => {
+    setup({
+      error: {
+        status: 500,
+        data: { error_code: "error", message: "Something went wrong" },
+      },
+    });
+    expect(screen.getByText("Something went wrong")).toBeInTheDocument();
+    expect(screen.queryByTestId("test-content")).not.toBeInTheDocument();
+  });
+
+  it("renders fallback error message", () => {
+    setup({ error: { status: 500 } });
+    expect(screen.getByText(/An error occurred/)).toBeInTheDocument();
+    expect(screen.queryByTestId("test-content")).not.toBeInTheDocument();
+  });
+
+  it("renders branding in error states", () => {
+    setup({ error: { status: 404 } });
+    expect(screen.getByText("Powered by")).toBeInTheDocument();
+  });
+
+  it("hides branding in error states if it's turned off", () => {
+    setup({ error: { status: 404 }, hasEmbedBranding: false });
+    expect(screen.queryByText("Powered by")).not.toBeInTheDocument();
+  });
+
+  describe("theming", () => {
+    it("renders correctly without a theme parameter", () => {
+      setup();
+
+      const embedFrame = screen.getByTestId("embed-frame");
+
+      expect(embedFrame).not.toHaveAttribute("data-embed-theme");
+    });
+
+    test.each(["night", "transparent"])(
+      "correctly handles %s theme",
+      (theme) => {
+        setup({ hash: `#theme=${theme}` });
+        expect(screen.getByTestId("embed-frame")).toHaveAttribute(
+          "data-embed-theme",
+          theme,
+        );
+      },
+    );
+  });
+});

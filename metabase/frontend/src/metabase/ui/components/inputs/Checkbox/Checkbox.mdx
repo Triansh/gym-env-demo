@@ -1,0 +1,45 @@
+import { Canvas, Story, Meta } from "@storybook/blocks";
+import { Checkbox, Stack } from "metabase/ui";
+import * as CheckboxStories from "./Checkbox.stories";
+
+<Meta of={CheckboxStories} />
+
+# Checkbox
+
+Our themed wrapper around [Mantine Checkbox](https://mantine.dev/core/checkbox/).
+
+## When to use Checkbox
+
+Checkboxes allow users to select any number of options from a list — none, one, or several. Each option toggles independently, and all of them are exposed up front for users to compare.
+
+## Docs
+
+- [Figma File](https://www.figma.com/design/qYbAmJHUJ2Tkb01WFegUKp/Component-Library?node-id=250-9106)
+- [Mantine Checkbox Docs](https://mantine.dev/core/checkbox/)
+
+## Usage guidelines
+
+- **Use this component when the options are independent and users can pick any number of them.** For a single choice between mutually exclusive options, use Radio instead.
+- **Keep the list short.** Past a handful of options a <a href="/?path=/docs/components-inputs-multiselect--docs" target="_top">MultiSelect</a> is easier to scan than a long column of checkboxes.
+- For option ordering, keep related options next to each other and put the ones users pick most often first. Alphabetical ordering is usually a good fallback if there's no inherent order in your set of choices.
+- In almost all circumstances you'll want to use `<Checkbox.Group>` (<a href="/?path=/story/components-inputs-checkbox--groups" target="_top">an example</a>) to provide a set of options and help with defaultValues and state management between them.
+
+## Examples
+
+<Canvas of={CheckboxStories.Default} />
+
+### States
+
+<Canvas of={CheckboxStories.Overview} />
+
+### Checkbox.Group and Checkbox.Card Group
+
+<Canvas of={CheckboxStories.Groups} />
+
+### Checkbox.Card
+
+<Canvas of={CheckboxStories.Card} />
+
+## Related components
+
+- <a href="/?path=/docs/components-inputs-radio--docs" target="_top">Radio</a>

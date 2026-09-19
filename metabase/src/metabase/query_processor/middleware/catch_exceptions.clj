@@ -1,0 +1,184 @@
+(ns metabase.query-processor.middleware.catch-exceptions
+  "Middleware for catching exceptions thrown by the query processor and returning them in a friendlier format."
+  (:refer-clojure :exclude [some get-in])
+  (:require
+   [clojure.string :as str]
+   [metabase.analytics-interface.core :as analytics]
+   [metabase.driver :as driver]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.queries.schema :as queries.schema]
+   [metabase.query-processor.compile :as qp.compile]
+   [metabase.query-processor.error-type :as qp.error-type]
+   [metabase.query-processor.middleware.permissions :as qp.perms]
+   [metabase.query-processor.pipeline :as qp.pipeline]
+   [metabase.query-processor.preprocess :as qp.preprocess]
+   [metabase.query-processor.schema :as qp.schema]
+   [metabase.util :as u]
+   [metabase.util.i18n :refer [trs]]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.performance :refer [some get-in]])
+  (:import
+   (clojure.lang ExceptionInfo)
+   (java.sql SQLException)))
+
+(set! *warn-on-reflection* true)
+
+(defmulti ^:private format-exception
+  "Format an Exception thrown by the Query Processor into a userland error response map."
+  {:arglists '([^Throwable e])}
+  class)
+
+(defmethod format-exception Throwable
+  [^Throwable e]
+  {:status     :failed
+   :class      (class e)
+   :error      (.getMessage e)
+   :stacktrace (u/filtered-stacktrace e)})
+
+(defmethod format-exception InterruptedException
+  [^InterruptedException _e]
+  {:status :interrupted})
+
+(defmethod format-exception ExceptionInfo
+  [e]
+  ;; `:is-curated` is a flag that signals whether the error message in `e` was approved by product
+  ;; to be shown to the user. It is used by FE.
+  (let [{error-type :type, is-curated :is-curated, :as data} (ex-data e)]
+    (merge
+     ((get-method format-exception Throwable) e)
+     (when (qp.error-type/known-error-type? error-type)
+       {:error_type error-type})
+     (when is-curated
+       {:error_is_curated is-curated})
+     ;; TODO - we should probably change this key to `:data` so we're not mixing lisp-case and snake_case keys
+     {:ex-data data})))
+
+(defmethod format-exception SQLException
+  [^SQLException e]
+  (assoc ((get-method format-exception Throwable) e)
+         :state (.getSQLState e)))
+
+(mr/def ::format-exception-result
+  "The map shape produced by one of this namespace's private `format-exception` methods."
+  [:map {:closed true}
+   [:status            [:enum :failed :interrupted]]
+   [:class             {:optional true} (lib.schema.common/instance-of-class Class)]
+   [:error             {:optional true} [:maybe :string]]
+   [:stacktrace        {:optional true} [:maybe [:sequential :string]]]
+   [:error_type        {:optional true} :keyword]
+   [:error_is_curated  {:optional true} :boolean]
+   [:ex-data           {:optional true} :metabase.lib.schema.common/exception-data]
+   [:state             {:optional true} [:maybe :string]]])
+
+;; TODO -- some of this logic duplicates the functionality of `clojure.core/Throwable->map`, we should consider
+;; whether we can use that more extensively and remove some of this logic
+(defn- exception-chain
+  "Exception chain in reverse order, e.g. inner-most cause first."
+  [e]
+  (reverse (u/full-exception-chain e)))
+
+(mu/defn- best-top-level-error
+  "In cases where the top-level Exception doesn't have the best error message, return a better one to use instead. We
+  usually want to show SQLExceptions at the top level since they contain more useful information."
+  [maps :- [:sequential {:min 1} ::format-exception-result]]
+  (some (fn [m]
+          (when (isa? (:class m) SQLException)
+            ;; Some JDBC drivers (e.g. Databricks) return a stacktrace in the
+            ;; error message that we don't want to show the user
+            {:error (first (str/split (get m :error "") #"\n\tat " 2))}))
+        maps))
+
+(mu/defn exception-response :- [:map [:status :keyword]]
+  "Convert an Exception to a nicely-formatted Clojure map suitable for returning in userland QP responses."
+  [^Throwable e :- (lib.schema.common/instance-of-class Throwable)]
+  (let [[m & more :as maps] (for [e (exception-chain e)]
+                              (format-exception e))]
+    (merge
+     m
+     (best-top-level-error maps)
+     ;; merge in the first error_type we see
+     (when-let [error-type (some :error_type maps)]
+       {:error_type error-type})
+     (when (seq more)
+       {:via (vec more)}))))
+
+(defn- query-info
+  "Map of about `query` to add to the exception response."
+  [{query-type :type, :as query} {:keys [preprocessed native]}]
+  (merge
+   {:json_query (dissoc query :info :driver)}
+   ;; add the fully-preprocessed and native forms to the error message for MBQL queries, since they're extremely
+   ;; useful for debugging purposes.
+   (when (= (keyword query-type) :query)
+     {:preprocessed preprocessed
+      :native       (when (qp.perms/current-user-has-adhoc-native-query-perms? query)
+                      native)})))
+
+(mr/def ::query-execution-info
+  "The in-flight QueryExecution info that userland query processing attaches to exceptions: the columns about to be saved, plus the query and start time."
+  [:merge
+   ::queries.schema/query-execution.update
+   [:map {:closed true}
+    [:json_query        {:optional true} ::qp.schema/any-query]
+    [:start_time_millis {:optional true} :int]]])
+
+(mu/defn- query-execution-info :- :map
+  [query-execution :- ::query-execution-info]
+  (dissoc query-execution :result_rows :hash :executor_id :dashboard_id :pulse_id :native :start_time_millis))
+
+(def ^:private ExtraInfo
+  [:map {:closed true}
+   [:native       {:optional true} [:maybe :metabase.query-processor.compile/compiled]]
+   [:preprocessed {:optional true} [:maybe :metabase.lib.schema/query]]])
+
+(mu/defn- format-exception* :- [:map [:status :keyword]]
+  "Format a `Throwable` into the usual userland error-response format."
+  [query        :- ::qp.schema/any-query
+   ^Throwable e :- (lib.schema.common/instance-of-class Throwable)
+   extra-info   :- [:maybe ExtraInfo]]
+  (try
+    ;; [[metabase.query-processor.middleware.process-userland-query/process-userland-query-middleware]] wraps exceptions
+    ;; to add query execution info, unwrap them and format the wrapped one
+    (if-let [query-execution (:query-execution (ex-data e))]
+      (merge (query-execution-info query-execution)
+             (format-exception* query (ex-cause e) extra-info))
+      (merge
+       {:data {:rows [], :cols []}, :row_count 0}
+       (exception-response e)
+       (query-info query extra-info)))
+    (catch Throwable e
+      (assoc (Throwable->map e) :status :failed))))
+
+(mu/defn catch-exceptions :- ::qp.schema/qp
+  "Middleware for catching exceptions thrown by the query processor and returning them in a 'normal' format. Forwards
+  exceptions to the `result-chan`."
+  [qp :- ::qp.schema/qp]
+  (mu/fn [query :- ::qp.schema/any-query
+          rff   :- ::qp.schema/rff]
+    (if-not (get-in query [:middleware :userland-query?])
+      (qp query rff)
+      (let [extra-info (delay
+                         {:native       (u/ignore-exceptions
+                                          (qp.compile/compile query))
+                          :preprocessed (u/ignore-exceptions
+                                          (qp.preprocess/preprocess query))})]
+        (try
+          (qp query rff)
+          (catch Throwable e
+            (analytics/inc! :metabase-query-processor/query {:driver driver/*driver* :status "failure"})
+            ;; format the Exception and return it
+            (let [formatted-exception (format-exception* query e @extra-info)
+                  query-canceled?     (some (comp :query/query-canceled? ex-data)
+                                            (u/full-exception-chain e))
+                  pool-saturated?     (qp.error-type/connection-pool-saturated?
+                                       (:error_type formatted-exception))]
+              (when-not (or query-canceled? pool-saturated?)
+                (log/errorf "Error processing query: %s"
+                            (or (:error formatted-exception) "Error running query")))
+              ;; ensure always a message on the error otherwise FE thinks query was successful. (#23258, #23281)
+              (let [result (update formatted-exception
+                                   :error (fnil identity (trs "Error running query")))]
+                (assert (:status result))
+                (qp.pipeline/*result* result)))))))))

@@ -1,0 +1,135 @@
+import { dashboardApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import {
+  cardIsEquivalent,
+  cardParametersAreEquivalent,
+} from "metabase/common/utils/card";
+import type { CardQuestionBuilder } from "metabase/metadata-store";
+import { hasMatchingParameters } from "metabase/parameters/utils/dashboards";
+import { getParameterValuesByIdFromQueryParams } from "metabase/parameters/utils/parameter-parsing";
+import { setErrorPage } from "metabase/redux/app";
+import type { Dispatch } from "metabase/redux/store";
+import type {
+  Card,
+  Parameter,
+  ParameterValuesMap,
+  SeriesCard,
+} from "metabase-types/api";
+
+function shouldPropagateDashboardParameters({
+  cardId,
+  deserializedCard,
+  originalCard,
+}: {
+  cardId?: number;
+  deserializedCard: Card;
+  originalCard?: Card | null;
+}): boolean {
+  if (cardId && deserializedCard.parameters) {
+    return true;
+  } else if (!originalCard) {
+    return false;
+  } else {
+    const equivalentCards = cardIsEquivalent(deserializedCard, originalCard);
+    const differentParameters = !cardParametersAreEquivalent(
+      deserializedCard,
+      originalCard,
+    );
+    return equivalentCards && differentParameters;
+  }
+}
+
+async function verifyMatchingDashcardAndParameters({
+  dispatch,
+  dashboardId,
+  dashcardId,
+  cardId,
+  parameters,
+}: {
+  dispatch: Dispatch;
+  dashboardId: number;
+  dashcardId: number;
+  cardId: number;
+  parameters: Parameter[];
+}) {
+  try {
+    const dashboard = await runRtkEndpoint(
+      { id: dashboardId },
+      dispatch,
+      dashboardApi.endpoints.getDashboard,
+    );
+    if (
+      !hasMatchingParameters({
+        dashboard,
+        dashcardId,
+        cardId,
+        parameters,
+      })
+    ) {
+      dispatch(setErrorPage({ status: 403 }));
+    }
+  } catch (error) {
+    dispatch(setErrorPage(error));
+  }
+}
+
+export function getParameterValuesForQuestion({
+  card,
+  queryParams,
+  buildQuestion,
+}: {
+  card: SeriesCard;
+  queryParams?: ParameterValuesMap;
+  buildQuestion: CardQuestionBuilder;
+}) {
+  return getParameterValuesByIdFromQueryParams(
+    buildQuestion(card).parameters(),
+    queryParams ?? {},
+  );
+}
+
+/**
+ * Merges .parameters, .dashboardId, and .dashcardId props from deserializedCard into card.
+ * Sets an error page if there have been permissions or data changes to a dashboard such that:
+ *  - If the user loses permissions to view the dashboard, the user will be navigated to an unauthed screen.
+ *  - If the card is removed from the dashboard or some of the parameters mapped to it have been removed,
+ *    the user will be navigated to an unauthed screen.
+ * See https://github.com/metabase/metabase/pull/19300 for the origin of the error handling.
+ */
+export async function propagateDashboardParameters({
+  card,
+  deserializedCard,
+  originalCard,
+  dispatch,
+}: {
+  card: SeriesCard;
+  deserializedCard: Card; // DashCard (has dashboardId and dashcardId)
+  originalCard?: Card | null;
+  dispatch: Dispatch;
+}) {
+  const cardId = card.id;
+  if (
+    cardId &&
+    shouldPropagateDashboardParameters({
+      cardId,
+      deserializedCard,
+      originalCard,
+    })
+  ) {
+    const { dashboardId, dashcardId, parameters } = deserializedCard;
+    await verifyMatchingDashcardAndParameters({
+      dispatch,
+      cardId,
+      // Unjustified type cast. FIXME
+      dashboardId: dashboardId as number,
+      // Unjustified type cast. FIXME
+      dashcardId: dashcardId as number,
+      // Unjustified type cast. FIXME
+      parameters: parameters as Parameter[],
+    });
+    card.parameters = parameters;
+    card.dashboardId = dashboardId;
+    card.dashcardId = dashcardId;
+  }
+  return card;
+}

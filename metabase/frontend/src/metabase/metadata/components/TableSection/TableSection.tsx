@@ -1,0 +1,191 @@
+import { memo, useState } from "react";
+import { t } from "ttag";
+
+import { EmptyState } from "metabase/common/components/EmptyState";
+import { Link } from "metabase/common/components/Link";
+import { useTableUpdateHandlers } from "metabase/metadata/hooks";
+import {
+  ActionIcon,
+  Group,
+  Icon,
+  Loader,
+  Stack,
+  type StackProps,
+  Text,
+  Tooltip,
+} from "metabase/ui";
+import * as Urls from "metabase/urls";
+import type { FieldId, Table } from "metabase-types/api";
+
+import { FieldOrderPicker } from "../FieldOrderPicker";
+import { NameDescriptionInput } from "../NameDescriptionInput";
+import { ResponsiveButton } from "../ResponsiveButton";
+import { TableFieldList } from "../TableFieldList";
+import { TableSortableFieldList } from "../TableSortableFieldList";
+
+import S from "./TableSection.module.css";
+import { useResponsiveButtons } from "./hooks";
+
+type TableSectionBaseProps = {
+  table: Table;
+  fieldId: FieldId | undefined;
+  withName?: boolean;
+  getFieldHref: (fieldId: FieldId) => string;
+  onSyncOptionsClick: () => void;
+} & StackProps;
+
+const TableSectionBase = ({
+  table,
+  fieldId,
+  withName,
+  getFieldHref,
+  onSyncOptionsClick,
+  ...props
+}: TableSectionBaseProps) => {
+  const {
+    handleNameChange,
+    handleDescriptionChange,
+    handleFieldOrderTypeChange,
+    handleCustomFieldOrderChange,
+    isUpdatingSorting,
+  } = useTableUpdateHandlers({ table });
+  const [isSorting, setIsSorting] = useState(false);
+  const hasFields = Boolean(table.fields && table.fields.length > 0);
+  const {
+    buttonsContainerRef,
+    showButtonLabel,
+    setDoneButtonWidth,
+    setSortingButtonWidth,
+    setSyncButtonWidth,
+  } = useResponsiveButtons({
+    hasFields,
+    isSorting,
+    isUpdatingSorting,
+  });
+
+  return (
+    <Stack data-testid="table-section" gap={0} pb="xl" px="xl" {...props}>
+      <Stack
+        className={S.header}
+        gap="xl"
+        pb={12}
+        pos="sticky"
+        pt="xl"
+        top={0}
+        bg="background_page-secondary"
+      >
+        {withName && (
+          <NameDescriptionInput
+            description={table.description ?? ""}
+            descriptionPlaceholder={t`Give this table a description`}
+            name={table.display_name}
+            nameIcon="table2"
+            nameMaxLength={254}
+            namePlaceholder={t`Give this table a name`}
+            nameRightSection={
+              <Tooltip label={t`Go to this table`} position="top">
+                <ActionIcon
+                  component={Link}
+                  to={Urls.queryBuilderTable(table.id, table.db_id)}
+                  variant="subtle"
+                  color="text-disabled"
+                  size="sm"
+                  mr="sm"
+                  aria-label={t`Go to this table`}
+                >
+                  <Icon name="external" size={16} />
+                </ActionIcon>
+              </Tooltip>
+            }
+            onNameChange={handleNameChange}
+            onDescriptionChange={handleDescriptionChange}
+          />
+        )}
+
+        <Group
+          align="center"
+          gap="lg"
+          justify="space-between"
+          miw={0}
+          wrap="nowrap"
+        >
+          <Text flex="0 0 auto" fw="bold">{t`Fields`}</Text>
+
+          <Group
+            flex="1"
+            gap="lg"
+            justify="flex-end"
+            miw={0}
+            ref={buttonsContainerRef}
+            wrap="nowrap"
+          >
+            {/* keep these conditions in sync with getRequiredWidth in useResponsiveButtons */}
+
+            {isUpdatingSorting && <Loader size="xs" />}
+
+            {!isSorting && hasFields && (
+              <ResponsiveButton
+                icon="sort_arrows"
+                showLabel={showButtonLabel}
+                onClick={() => setIsSorting(true)}
+                onRequestWidth={setSortingButtonWidth}
+              >{t`Sorting`}</ResponsiveButton>
+            )}
+
+            {!isSorting && !table.db?.is_attached_dwh && (
+              <ResponsiveButton
+                icon="gear_settings_filled"
+                showLabel={showButtonLabel}
+                onClick={onSyncOptionsClick}
+                onRequestWidth={setSyncButtonWidth}
+              >{t`Sync options`}</ResponsiveButton>
+            )}
+
+            {isSorting && (
+              <FieldOrderPicker
+                value={table.field_order}
+                onChange={handleFieldOrderTypeChange}
+              />
+            )}
+
+            {isSorting && (
+              <ResponsiveButton
+                icon="check"
+                showLabel={showButtonLabel}
+                showIconWithLabel={false}
+                onClick={() => setIsSorting(false)}
+                onRequestWidth={setDoneButtonWidth}
+              >
+                {t`Done`}
+              </ResponsiveButton>
+            )}
+          </Group>
+        </Group>
+      </Stack>
+
+      <Stack gap="xl">
+        <Stack gap={12}>
+          {!hasFields && <EmptyState message={t`This table has no fields`} />}
+
+          {isSorting && hasFields && (
+            <TableSortableFieldList
+              table={table}
+              activeFieldId={fieldId}
+              onChange={handleCustomFieldOrderChange}
+            />
+          )}
+
+          {!isSorting && hasFields && (
+            <TableFieldList
+              table={table}
+              activeFieldId={fieldId}
+              getFieldHref={getFieldHref}
+            />
+          )}
+        </Stack>
+      </Stack>
+    </Stack>
+  );
+};
+
+export const TableSection = memo(TableSectionBase);

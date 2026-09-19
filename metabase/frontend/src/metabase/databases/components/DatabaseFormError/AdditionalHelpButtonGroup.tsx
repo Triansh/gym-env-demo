@@ -1,0 +1,54 @@
+import { t } from "ttag";
+
+import { Link } from "metabase/common/components/Link";
+import CS from "metabase/css/core/index.css";
+import { getUserIsAdmin } from "metabase/current-user";
+import { useSelector } from "metabase/redux";
+import { getDocsUrl } from "metabase/selectors/settings";
+import { getShowMetabaseLinks } from "metabase/selectors/whitelabel";
+import { Button, Divider, Icon } from "metabase/ui";
+import * as Urls from "metabase/urls";
+
+import { ContactSupportButtonSection } from "./ContactSupportButtonSection";
+
+export const AdditionalHelpButtonGroup = () => {
+  const showMetabaseLinks = useSelector(getShowMetabaseLinks);
+  const docsUrl = useSelector((state) => getDocsUrl(state, { page: "" }));
+  const isAdmin = useSelector(getUserIsAdmin);
+
+  return (
+    <>
+      {showMetabaseLinks && (
+        <>
+          <Divider variant="dashed" mb="xl" />
+          <Button
+            className={CS.link}
+            component={Link}
+            leftSection={<Icon name="reference" />}
+            target="_blank"
+            to={docsUrl}
+            variant="subtle"
+          >
+            {t`Read the docs`}
+          </Button>
+        </>
+      )}
+      {isAdmin && (
+        <>
+          <Divider variant="dashed" />
+          <Button
+            className={CS.link}
+            component={Link}
+            leftSection={<Icon name="mail" />}
+            to={Urls.newUser()}
+            variant="subtle"
+          >
+            {t`Invite a teammate to help you`}
+          </Button>
+        </>
+      )}
+      <Divider variant="dashed" />
+      <ContactSupportButtonSection />
+    </>
+  );
+};

@@ -1,0 +1,99 @@
+import { useMemo } from "react";
+import { t } from "ttag";
+import * as Yup from "yup";
+
+import {
+  Form,
+  FormErrorMessage,
+  FormProvider,
+  FormSubmitButton,
+  FormTextInput,
+} from "metabase/forms";
+import { Stack } from "metabase/ui";
+import * as Errors from "metabase/utils/errors";
+import { memoize } from "metabase/utils/memoize";
+import { passwordComplexityDescription } from "metabase/utils/password";
+
+import type { ResetPasswordData } from "../../types";
+
+import {
+  PasswordFormMessage,
+  PasswordFormTitle,
+} from "./ResetPasswordForm.styled";
+
+const getResetPasswordSchema = () =>
+  Yup.object({
+    password: Yup.string()
+      .default("")
+      .required(Errors.required)
+      .test(async (value = "", context) => {
+        const error = await context.options.context?.onValidatePassword(value);
+        return error ? context.createError({ message: error }) : true;
+      }),
+    password_confirm: Yup.string()
+      .default("")
+      .required(Errors.required)
+      .oneOf([Yup.ref("password")], t`passwords do not match`),
+  });
+
+interface ResetPasswordFormProps {
+  onValidatePassword: (password: string) => Promise<string | undefined>;
+  onSubmit: (data: ResetPasswordData) => void;
+}
+
+export const ResetPasswordForm = ({
+  onValidatePassword,
+  onSubmit,
+}: ResetPasswordFormProps): JSX.Element => {
+  const initialValues = useMemo(() => {
+    return getResetPasswordSchema().getDefault();
+  }, []);
+
+  const passwordDescription = useMemo(() => {
+    return passwordComplexityDescription();
+  }, []);
+
+  const validationContext = useMemo(
+    () => ({ onValidatePassword: memoize(onValidatePassword) }),
+    [onValidatePassword],
+  );
+
+  return (
+    <div>
+      <PasswordFormTitle>{t`New password`}</PasswordFormTitle>
+      <PasswordFormMessage>
+        {t`To keep your data secure, passwords ${passwordDescription}`}
+      </PasswordFormMessage>
+      <FormProvider
+        initialValues={initialValues}
+        validationSchema={getResetPasswordSchema()}
+        validationContext={validationContext}
+        onSubmit={onSubmit}
+      >
+        <Form as={Stack} gap="lg">
+          <FormTextInput
+            name="password"
+            type="password"
+            label={t`Create a password`}
+            placeholder={t`Shhh...`}
+            autoComplete="new-password"
+            autoFocus
+          />
+          <FormTextInput
+            name="password_confirm"
+            type="password"
+            label={t`Confirm your password`}
+            placeholder={t`Shhh... but one more time so we get it right`}
+            autoComplete="new-password"
+          />
+          <FormSubmitButton
+            label={t`Save new password`}
+            variant="filled"
+            fullWidth
+          />
+          <FormErrorMessage />
+        </Form>
+      </FormProvider>
+    </div>
+  );
+};

@@ -1,0 +1,117 @@
+import userEvent from "@testing-library/user-event";
+
+import {
+  findRequests,
+  setupPropertiesEndpoints,
+  setupSettingsEndpoints,
+  setupUpdateSettingEndpoint,
+} from "__support__/server-mocks";
+import { createMockSettingsState } from "__support__/state";
+import { renderWithProviders, screen } from "__support__/ui";
+import type {
+  EnterpriseSettingKey,
+  EnterpriseSettings,
+} from "metabase-types/api";
+import { createMockSettings } from "metabase-types/api/mocks";
+
+import { ImageUploadWidget } from "./ImageUploadWidget";
+
+const DEFAULT_LOGO_URL = "app/assets/img/logo.png";
+
+async function setup({
+  name,
+  title,
+  description,
+  settings: settingOverrides = {},
+}: {
+  name: EnterpriseSettingKey;
+  title: string;
+  description?: React.ReactNode;
+  settings?: Partial<EnterpriseSettings>;
+}) {
+  const settingValues = {
+    "application-logo-url": DEFAULT_LOGO_URL,
+    ...settingOverrides,
+  };
+  const settings = createMockSettings(settingValues);
+  setupPropertiesEndpoints(settings);
+  setupSettingsEndpoints([
+    {
+      key: "application-logo-url",
+      default: DEFAULT_LOGO_URL,
+      is_env_setting: false,
+      description: "The logo of the application",
+      env_name: "METABASE_APPLICATION_LOGO_URL",
+    },
+  ]);
+  setupUpdateSettingEndpoint();
+
+  renderWithProviders(
+    <ImageUploadWidget name={name} title={title} description={description} />,
+    { storeInitialState: { settings: createMockSettingsState(settingValues) } },
+  );
+
+  await screen.findByText(title);
+
+  const isDefaultLogo =
+    settingValues["application-logo-url"] === DEFAULT_LOGO_URL;
+  await screen.findByText(
+    isDefaultLogo ? "No file chosen" : "Remove uploaded image",
+  );
+}
+
+describe("ImageUploadWidget", () => {
+  it("shows an empty input", async () => {
+    await setup({
+      name: "application-logo-url",
+      title: "Application logo",
+    });
+
+    expect(screen.getByText("No file chosen")).toBeInTheDocument();
+  });
+
+  it("shows that a file has been uploaded", async () => {
+    await setup({
+      name: "application-logo-url",
+      title: "Application logo",
+      settings: {
+        "application-logo-url": "data:image/png;base64,abc123",
+      },
+    });
+
+    expect(
+      await screen.findByText("Remove uploaded image"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows an image preview", async () => {
+    await setup({
+      name: "application-logo-url",
+      title: "Application logo",
+      settings: {
+        "application-logo-url": "data:image/png;base64,abc123",
+      },
+    });
+
+    expect(await screen.findByLabelText("Image preview")).toBeInTheDocument();
+  });
+
+  it("can remove an uploaded image", async () => {
+    await setup({
+      name: "application-logo-url",
+      title: "Application logo",
+      settings: {
+        "application-logo-url": "data:image/png;base64,abc123",
+      },
+    });
+
+    await userEvent.click(await screen.findByLabelText("close icon"));
+
+    const [{ url, body }] = await findRequests("PUT");
+
+    expect(url).toMatch(/application-logo-url/);
+    expect(body).toEqual({
+      value: null,
+    });
+  });
+});

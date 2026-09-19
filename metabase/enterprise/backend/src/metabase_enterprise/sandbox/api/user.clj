@@ -1,0 +1,55 @@
+(ns metabase-enterprise.sandbox.api.user
+  "Endpoint(s)for setting user attributes."
+  (:require
+   [metabase-enterprise.sandbox.db :as sandbox.db]
+   [metabase.api.common :as api]
+   [metabase.api.macros :as api.macros]
+   [metabase.tenants.core :as tenants]
+   [metabase.users.schema :as users.schema]
+   [metabase.util.i18n :refer [deferred-tru]]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.schema :as ms]))
+
+(def ^:private UserAttributes
+  "Login attributes keyed by the attribute names the admin chose, so string-keyed; they are stored as JSON."
+  (mu/with-api-error-message
+   users.schema/LoginAttributes
+   (deferred-tru "value must be a valid user attributes map (name -> value)")))
+
+;; TODO - not sure we need this endpoint now that we're just letting you edit from the regular `PUT /api/user/:id
+;; endpoint
+;;
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :put "/:id/attributes"
+  "Update the `login_attributes` for a User. Only personal users can have attributes."
+  [{:keys [id]} :- [:map {:closed true}
+                    [:id ms/PositiveInt]]
+   _query-params
+   {:keys [login_attributes]} :- [:map {:closed true}
+                                  [:login_attributes {:optional true} [:maybe UserAttributes]]]]
+  (api/check-404 (sandbox.db/personal-user id))
+  (pos? (sandbox.db/set-user-login-attributes! id login_attributes)))
+
+(def ^:private max-login-attributes 5000)
+
+;; TODO (Cam 2025-11-25) please add a response schema to this API endpoint, it makes it easier for our customers to
+;; use our API + we will need it when we make auto-TypeScript-signature generation happen
+;;
+#_{:clj-kondo/ignore [:metabase/validate-defendpoint-has-response-schema]}
+(api.macros/defendpoint :get "/attributes"
+  "Fetch a list of possible keys for User `login_attributes`. This includes keys from tenant model
+  attributes and keys that have already been set for existing Users."
+  []
+  (into (tenants/login-attribute-keys)
+        (comp
+         (mapcat keys)
+         (distinct)
+         (take max-login-attributes))
+        (sandbox.db/user-attributes-reducible)))
+
+(def ^{:arglists '([request respond raise])} routes
+  "`/api/mt/user` routes."
+  (api.macros/ns-handler *ns* api/+check-superuser))

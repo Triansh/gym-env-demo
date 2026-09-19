@@ -1,0 +1,233 @@
+import _ from "underscore";
+
+import { datasetApi } from "metabase/api";
+import { runRtkEndpoint } from "metabase/api/utils/run-rtk-endpoint";
+import {
+  type ShallowForeignKey,
+  selectMetadataProvider,
+  selectQuestionFromCard,
+  selectQuestionFromOpts,
+} from "metabase/metadata-store";
+import { createThunkAction } from "metabase/redux";
+import type { Dispatch, GetState } from "metabase/redux/store";
+import type { ObjectId } from "metabase/visualizations/components/ObjectDetail/types";
+import * as Lib from "metabase-lib";
+import type {
+  Card,
+  DatasetColumn,
+  Field,
+  FieldId,
+  NormalizedField,
+} from "metabase-types/api";
+
+import {
+  CLEAR_OBJECT_DETAIL_FK_REFERENCES,
+  LOAD_OBJECT_DETAIL_FK_REFERENCES,
+  RESET_ROW_ZOOM,
+} from "../store/actions";
+import {
+  getCanZoomNextRow,
+  getCanZoomPreviousRow,
+  getCard,
+  getFirstQueryResult,
+  getNextRowPKValue,
+  getPreviousRowPKValue,
+  getTableForeignKeys,
+} from "../store/selectors";
+
+import { setCardAndRun } from "./core/core";
+import { updateUrl } from "./url";
+import { zoomInRow } from "./zoom";
+
+export const resetRowZoom = () => (dispatch: Dispatch) => {
+  dispatch({ type: RESET_ROW_ZOOM });
+
+  dispatch(updateUrl(null, { preserveParameters: false }));
+};
+
+function filterByFk(
+  query: Lib.Query,
+  field: DatasetColumn | Field | NormalizedField,
+  objectId: ObjectId,
+) {
+  const stageIndex = -1;
+  const column = Lib.fromLegacyColumn(query, stageIndex, field);
+  const filterClause =
+    typeof objectId === "number"
+      ? Lib.numberFilterClause({
+          operator: "=",
+          column,
+          values: [objectId],
+        })
+      : Lib.stringFilterClause({
+          operator: "=",
+          column,
+          values: [objectId],
+          options: {},
+        });
+  return Lib.filter(query, stageIndex, filterClause);
+}
+
+export const FOLLOW_FOREIGN_KEY = "metabase/qb/FOLLOW_FOREIGN_KEY";
+export const followForeignKey = createThunkAction(
+  FOLLOW_FOREIGN_KEY,
+  ({ objectId, fk }) => {
+    return async (dispatch, getState) => {
+      const state = getState();
+
+      const card = getCard(state);
+      const queryResult = getFirstQueryResult(state);
+
+      if (!queryResult || !fk || !card) {
+        return false;
+      }
+
+      const databaseId = selectQuestionFromCard(getState(), card).databaseId();
+      if (!databaseId) {
+        return;
+      }
+
+      const tableId = fk.origin.table.id;
+      const metadataProvider = selectMetadataProvider(getState(), databaseId);
+      const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
+      if (table == null) {
+        return;
+      }
+      const baseQuery = Lib.queryFromTableOrCardMetadata(
+        metadataProvider,
+        table,
+      );
+      const query = filterByFk(baseQuery, fk.origin, objectId);
+      const finalCard = selectQuestionFromOpts(getState(), {
+        dataset_query: Lib.toJsQuery(query),
+      }).card();
+
+      dispatch(resetRowZoom());
+      dispatch(setCardAndRun(finalCard));
+    };
+  },
+);
+
+interface FKInfo {
+  status: number;
+  value: string | number | null;
+}
+
+export const loadObjectDetailFKReferences = createThunkAction(
+  LOAD_OBJECT_DETAIL_FK_REFERENCES,
+  ({ objectId }) => {
+    return async (dispatch, getState) => {
+      dispatch({ type: CLEAR_OBJECT_DETAIL_FK_REFERENCES });
+
+      const state = getState();
+      const tableForeignKeys = getTableForeignKeys(state);
+
+      if (!Array.isArray(tableForeignKeys)) {
+        return null;
+      }
+
+      const card = getCard(state);
+      const queryResult = getFirstQueryResult(state);
+
+      async function getFKCount(
+        card: Card,
+        fk: ShallowForeignKey,
+      ): Promise<FKInfo | undefined> {
+        const databaseId = selectQuestionFromCard(
+          getState(),
+          card,
+        ).databaseId();
+        const tableId = fk.origin.table_id;
+        if (!tableId || !databaseId) {
+          return;
+        }
+        const metadataProvider = selectMetadataProvider(getState(), databaseId);
+        const table = Lib.tableOrCardMetadata(metadataProvider, tableId);
+        if (table == null) {
+          return;
+        }
+        const baseQuery = Lib.queryFromTableOrCardMetadata(
+          metadataProvider,
+          table,
+        );
+        const aggregatedQuery = Lib.aggregateByCount(baseQuery, -1);
+        const query = filterByFk(aggregatedQuery, fk.origin, objectId);
+        const finalCard = selectQuestionFromOpts(getState(), {
+          dataset_query: Lib.toJsQuery(query),
+        }).datasetQuery();
+
+        const info: FKInfo = {
+          status: 0,
+          value: null,
+        };
+
+        try {
+          const result = await runRtkEndpoint(
+            finalCard,
+            dispatch,
+            datasetApi.endpoints.getAdhocQuery,
+          );
+          if (
+            result &&
+            result.status === "completed" &&
+            result.data.rows.length > 0
+          ) {
+            info["value"] = result.data.rows[0][0];
+          } else {
+            info["value"] = "Unknown";
+          }
+        } finally {
+          info["status"] = 1;
+        }
+
+        return info;
+      }
+
+      // TODO: there are possible cases where running a query would not require refreshing this data, but
+      // skipping that for now because it's easier to just run this each time
+
+      // run a query on FK origin table where FK origin field = objectDetailIdValue
+      const fkReferences: Record<FieldId, FKInfo | undefined> = {};
+      if (card) {
+        for (let i = 0; i < tableForeignKeys.length; i++) {
+          const fk = tableForeignKeys[i];
+          const info = await getFKCount(card, fk);
+
+          fkReferences[fk.origin_id] = info;
+        }
+      }
+
+      // It's possible that while we were running those queries, the object
+      // detail id changed. If so, these fk reference are stale and we shouldn't
+      // put them in state. The detail id is used in the query so we check that.
+      const updatedQueryResult = getFirstQueryResult(getState());
+      if (!_.isEqual(queryResult?.json_query, updatedQueryResult?.json_query)) {
+        return null;
+      }
+      return fkReferences;
+    };
+  },
+);
+
+export const viewNextObjectDetail = () => {
+  return (dispatch: Dispatch, getState: GetState) => {
+    if (getCanZoomNextRow(getState())) {
+      // TODO(romeovs): remove this cast once we have a proper type for ObjectId
+      const objectId = getNextRowPKValue(getState()) as ObjectId;
+      dispatch(zoomInRow({ objectId }));
+    }
+  };
+};
+
+export const viewPreviousObjectDetail = () => {
+  return (dispatch: Dispatch, getState: GetState) => {
+    if (getCanZoomPreviousRow(getState())) {
+      // TODO(romeovs): remove this cast once we have a proper type for ObjectId
+      const objectId = getPreviousRowPKValue(getState()) as ObjectId;
+      dispatch(zoomInRow({ objectId }));
+    }
+  };
+};
+
+export const closeObjectDetail = () => (dispatch: Dispatch) =>
+  dispatch(resetRowZoom());

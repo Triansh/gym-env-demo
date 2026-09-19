@@ -1,0 +1,739 @@
+(ns metabase.warehouse-schema.models.field-values
+  "FieldValues is used to store a cached list of values of Fields that has `has_field_values=:auto-list` or `:list`.
+  Check the doc in [[metabase.lib.schema.metadata/column-has-field-values-options]] for more info about
+  `has_field_values`.
+
+  There are 2 main classes of FieldValues: Full and Advanced.
+  - Full FieldValues store a list of distinct values of a Field without any constraints.
+  - Whereas Advanced FieldValues has additional constraints:
+    - sandbox: FieldValues of a field but is sandboxed for a specific user
+    - linked-filter: FieldValues for a param that connects to a Field that is constrained by the values of other Field.
+      It's currently being used on Dashboard or Embedding, but it could be used to power any parameters that connect to a Field.
+
+  * Life cycle
+  - Full FieldValues are created by the fingerprint or scanning process.
+    Once it's created the values will be updated by the scanning process that runs daily.
+    Only active FieldValues that have a last_used_at within [[active-field-values-cutoff]] will be updated on sync.
+    FieldValues get a new last_used_at when going through [[get-or-create-full-field-values!]].
+  - Advanced FieldValues are created on demand: for example the Sandbox FieldValues are created when a user with
+    sandboxed permission try to get values of a Field.
+    Normally these FieldValues will be deleted after [[advanced-field-values-max-age]] days by the scanning process.
+    But they will also be automatically deleted when the Full FieldValues of the same Field got updated.
+
+  There is also more written about how these are used for remapping in the docstrings
+  for [[metabase.parameters.chain-filter]] and [[metabase.query-processor.middleware.add-remaps]]."
+  (:require
+   [clojure.string :as str]
+   [java-time.api :as t]
+   [medley.core :as m]
+   [metabase.analyze.core :as analyze]
+   [metabase.lib-be.core :as lib-be]
+   [metabase.lib.core :as lib]
+   [metabase.lib.schema.metadata :as lib.schema.metadata]
+   [metabase.models.interface :as mi]
+   [metabase.models.serialization :as serdes]
+   [metabase.premium-features.core :refer [defenterprise]]
+   [metabase.query-processor.reducible :as qp.reducible]
+   [metabase.util :as u]
+   [metabase.util.date-2 :as u.date]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.log :as log]
+   [metabase.util.malli :as mu]
+   [metabase.util.malli.registry :as mr]
+   [metabase.util.malli.schema :as ms]
+   [metabase.warehouse-schema.db :as warehouse-schema.db]
+   [metabase.warehouse-schema.metadata-from-qp :as metadata-from-qp]
+   [metabase.warehouse-schema.schema]
+   [methodical.core :as methodical]
+   [toucan2.core :as t2]))
+
+(set! *warn-on-reflection* true)
+
+(def ^:private ^Long entry-max-length
+  "The maximum character length for a stored FieldValues entry."
+  100)
+
+(def ^:dynamic ^Long *total-max-length*
+  "Maximum total length for a FieldValues entry (combined length of all values for the field)."
+  (long (* analyze/auto-list-cardinality-threshold entry-max-length)))
+
+(def ^:dynamic ^Integer *distinct-limit*
+  "Per-column row cap for warehouse-side distinct-value fetches. Used by the UNION ALL per-arm
+  `LIMIT`, by the per-field MBQL `lib/limit` in `distinct-values`, and by `persist-field-values!`
+  to detect whether the warehouse hit that cap.
+
+  Fields with fewer distinct values than this get marked as `auto-list`, meaning we save all
+  their distinct values in a FieldValues object that powers the list widget in the FE. Admins
+  can also manually mark any Field as `list`, which keeps FieldValues regardless of cardinality.
+
+  If a user does something crazy like marking a million-arity Field as List, this limit
+  prevents Metabase from exploding trying to fetch all values. The trade-off:
+
+  * Too low → GitHub issues like 'My 500-distinct-value Field that I marked as List is not
+    showing all values in the List Widget'
+  * Too high → Metabase runs out of memory materialising the result set"
+  (int 1000))
+
+(def ^java.time.Period advanced-field-values-max-age
+  "Age of an advanced FieldValues in days.
+  After this time, these field values should be deleted by the `delete-expired-advanced-field-values` job."
+  (t/days 30))
+
+(def ^:private ^java.time.Period active-field-values-cutoff
+  "How many days until a FieldValues is considered inactive. Inactive FieldValues will not be synced until
+   they are used again."
+  (t/days 14))
+
+(def advanced-field-values-types
+  "A class of fieldvalues that has additional constraints/filters."
+  #{:sandbox         ;; field values filtered by sandbox permissions
+    :impersonation   ;; field values with connection impersonation enforced (db-level roles)
+    :linked-filter
+    :advanced}) ;; field values with constraints from other linked parameters on dashboard/embedding
+
+(def ^:private field-values-types
+  "All FieldValues type."
+  (into #{:full} ;; default type for fieldvalues where it contains values for a field without constraints
+        advanced-field-values-types))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                             Entity & Lifecycle                                                 |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(methodical/defmethod t2/table-name :model/FieldValues [_model] :metabase_fieldvalues)
+
+(doto :model/FieldValues
+  (derive :metabase/model)
+  (derive :hook/timestamped?))
+
+(t2/deftransforms :model/FieldValues
+  {:human_readable_values mi/transform-json-no-keywordization
+   :values                mi/transform-json
+   :type                  mi/transform-keyword})
+
+(defn- assert-valid-human-readable-values [{human-readable-values :human_readable_values}]
+  (when-not (mr/validate [:maybe [:sequential [:maybe ms/NonBlankString]]] human-readable-values)
+    (throw (ex-info (tru "Invalid human-readable-values: values must be a sequence; each item must be nil or a string")
+                    {:human-readable-values human-readable-values
+                     :status-code           400}))))
+
+(defn- assert-valid-type-hash-combo
+  "Ensure that type is present, valid, and that a hash_key is provided iff this is an advanced field type."
+  [{:keys [type hash_key] :as _field-values}]
+  (when-not (contains? field-values-types type)
+    (throw (ex-info (tru "Invalid field-values type.")
+                    {:type        type
+                     :status-code 400})))
+
+  (when (and (= type :full) hash_key)
+    (throw (ex-info (tru "Full FieldValues shouldn''t have hash_key.")
+                    {:type        type
+                     :hash_key    hash_key
+                     :status-code 400})))
+
+  (when (and (advanced-field-values-types type) (str/blank? hash_key))
+    (throw (ex-info (tru "Advanced FieldValues require a hash_key.")
+                    {:type        type
+                     :status-code 400}))))
+
+(defn- assert-no-identity-changes [id changes]
+  (when (some #(contains? changes %) [:field_id :type :hash_key])
+    (throw (ex-info (tru "Can''t update field_id, type, or hash_key for a FieldValues.")
+                    {:id          id
+                     :field_id    (:field_id changes)
+                     :type        (:type changes)
+                     :hash_key    (:hash_key changes)
+                     :status-code 400}))))
+
+(defn clear-advanced-field-values-for-field!
+  "Remove all advanced FieldValues for a `field-or-id`."
+  [field-or-id]
+  (warehouse-schema.db/delete-field-values-of-types! (u/the-id field-or-id) advanced-field-values-types))
+
+(defn clear-field-values-for-field!
+  "Remove all FieldValues for a `field-or-id`, including the advanced fieldvalues."
+  [field-or-id]
+  (warehouse-schema.db/delete-field-values-for-field! (u/the-id field-or-id)))
+
+(t2/define-before-insert :model/FieldValues
+  [{:keys [field_id] :as field-values}]
+  (u/prog1 (update field-values :type #(keyword (or % :full)))
+    (assert-valid-human-readable-values field-values)
+    (assert-valid-type-hash-combo <>)
+    ;; if inserting a new full fieldvalues, make sure all the advanced field-values of this field are deleted
+    (when (= :full (:type <>))
+      (clear-advanced-field-values-for-field! field_id))))
+
+(t2/define-before-update :model/FieldValues
+  [field-values]
+  (let [changes (t2/changes field-values)]
+    (u/prog1 (update field-values :type #(keyword (or % :full)))
+      (assert-no-identity-changes (:id field-values) changes)
+      (assert-valid-human-readable-values field-values)
+      ;; if we're updating the values of a Full FieldValues, delete all Advanced FieldValues of this field
+      (when (and (contains? changes :values) (= :full (:type <>)))
+        (clear-advanced-field-values-for-field! (:field_id field-values))))))
+
+(defn- assert-coherent-query [{:keys [type hash_key] :as field-values}]
+  (cond
+    (nil? type)
+    (when (some? hash_key)
+      (throw (ex-info "Invalid query - cannot specify a hash_key without specifying the type"
+                      {:field-values field-values})))
+
+    (= :full (keyword type))
+    (when (some? hash_key)
+      (throw (ex-info "Invalid query - :full FieldValues cannot have a hash_key"
+                      {:field-values field-values})))
+
+    (and (contains? field-values :hash_key) (nil? hash_key))
+    (throw (ex-info "Invalid query - Advanced FieldValues can only specify a non-empty hash_key"
+                    {:field-values field-values}))))
+
+(defn- add-mismatched-hash-filter [{:keys [type] :as field-values}]
+  (cond
+    (= :full (keyword type)) (assoc field-values :hash_key nil)
+    (some? type)             (update field-values :hash_key #(or % [:not= nil]))
+    :else                    field-values))
+
+(t2/define-before-select :model/FieldValues
+  [{:keys [kv-args] :as query}]
+  (assert-coherent-query kv-args)
+  (update query :kv-args add-mismatched-hash-filter))
+
+(t2/define-after-select :model/FieldValues
+  [field-values]
+  (cond-> field-values
+    (contains? field-values :human_readable_values)
+    (update :human_readable_values (fn [human-readable-values]
+                                     (cond
+                                       (sequential? human-readable-values)
+                                       human-readable-values
+
+                                       ;; in some places human readable values were incorrectly saved as a map. If
+                                       ;; that's the case, convert them back to a sequence
+                                       (map? human-readable-values)
+                                       (do
+                                         (assert (:values field-values)
+                                                 (tru ":values must be present to fetch :human_readable_values"))
+                                         (mapv human-readable-values (:values field-values)))
+
+                                       ;; if the `:human_readable_values` key is present (i.e., if we are fetching the
+                                       ;; whole row), but `nil`, then replace the `nil` value with an empty vector. The
+                                       ;; client likes this better.
+                                       :else
+                                       [])))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                  Utils fns                                                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn inactive?
+  "If FieldValues have not been accessed recently they are considered inactive."
+  [field-values]
+  (let [cutoff (t/minus (t/offset-date-time) active-field-values-cutoff)]
+    (and
+     field-values
+     (not (or
+           (t/after? (:last_used_at field-values)
+                     cutoff)
+           ;; Double check that there are no other variants of Fieldvalues (e.g. advanced) that have not been used more recently
+           (t/after? (warehouse-schema.db/field-values-last-used-at (:field_id field-values))
+                     cutoff))))))
+
+(defn field-should-have-field-values?
+  "Should this `field` be backed by a corresponding FieldValues object?"
+  [field-or-field-id]
+  (if-not (map? field-or-field-id)
+    (let [field-id (u/the-id field-or-field-id)]
+      (recur (or (warehouse-schema.db/field-values-eligibility field-id)
+                 (throw (ex-info (tru "Field {0} does not exist." field-id)
+                                 {:field-id field-id, :status-code 404})))))
+    (let [{base-type        :base_type
+           visibility-type  :visibility_type
+           has-field-values :has_field_values
+           preview-display  :preview_display} field-or-field-id]
+      (boolean
+       (and
+        (not (contains? #{:retired :sensitive :hidden} (keyword visibility-type)))
+        ;; preview_display is set to false by sync for fields that shouldn't have FieldValues
+        ;; (e.g. long text fields, JSON columns, auto-cruft columns). Defaults to true if not provided.
+        (not (false? preview-display))
+        (not (isa? (keyword base-type) :type/field-values-unsupported))
+        (not (= (keyword base-type) :type/*))
+        (#{:list :auto-list} (keyword has-field-values)))))))
+
+(defn take-by-length
+  "Like `take` but condition by the total length of elements.
+   Assumes the elements are 1-tuples of values with a .toString() method.
+   Returns a stateful transducer when no collection is provided.
+
+    ;; (take-by-length 6 [[\"Dog\"] [\"Cat\"] [\"Duck\"]])
+    ;; => [[\"Dog\"] [\"Cat\"]]"
+  ([max-length]
+   (fn [rf]
+     (let [current-length (volatile! 0)]
+       (fn
+         ([] (rf))
+         ([result]
+          (rf result))
+         ([result input]
+          (vswap! current-length + (count (str (first input))))
+          (if (< @current-length max-length)
+            (rf result input)
+            (reduced result)))))))
+
+  ([max-length coll]
+   (lazy-seq
+    (when-let [s (seq coll)]
+      (let [f          (first s)
+            new-length (- max-length (count (str (first f))))]
+        (when-not (neg? new-length)
+          (cons f (take-by-length new-length
+                                  (rest s)))))))))
+
+(defn fixup-human-readable-values
+  "Field values and human readable values are lists that are zipped together. If the field values have changed, the
+  human readable values will need to change too. This function reconstructs the `human_readable_values` to reflect
+  `new-values`. If a new field value is found, a string version of that is used"
+  [{old-values :values, old-hrv :human_readable_values} new-values]
+  (when (seq old-hrv)
+    (let [orig-remappings (zipmap old-values old-hrv)]
+      (map #(get orig-remappings % (str %)) new-values))))
+
+(defn field-values->pairs
+  "Returns a list of pairs (or single element vectors if there are no human_readable_values) for the given
+  `field-values` instance."
+  [{:keys [values human_readable_values]}]
+  (if (seq human_readable_values)
+    (map vector values human_readable_values)
+    (map vector values)))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                               Advanced FieldValues                                             |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn advanced-field-values-expired?
+  "Checks if an advanced FieldValues expired."
+  [fv]
+  {:pre [(advanced-field-values-types (:type fv))]}
+  (u.date/older-than? (:created_at fv) advanced-field-values-max-age))
+
+(defenterprise hash-input-for-sandbox
+  "Return a hash-key that will be used for sandboxed fieldvalues."
+  metabase-enterprise.sandbox.models.params.field-values
+  [_field]
+  nil)
+
+(defenterprise hash-input-for-impersonation
+  "Return a hash-key that will be used for impersonated fieldvalues."
+  metabase-enterprise.impersonation.driver
+  [_field]
+  nil)
+
+(defenterprise hash-input-for-database-routing
+  "Returns a hash input that will be used for fields subject to database routing"
+  metabase-enterprise.database-routing.models
+  [_field]
+  nil)
+
+(defn hash-input-for-linked-filters
+  "Return a hash-key that will be used for linked-filters fieldvalues."
+  [_field constraints]
+  (when (seq constraints)
+    {:constraints constraints}))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                                    CRUD fns                                                    |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defn limit-values
+  "Dedup, sort, and apply the `*total-max-length*` character cap to a sequence of scalar `values`.
+  Returns `{:values sorted-vec, :has_more_values bool}` where `:has_more_values` reflects only
+  the char-length cap (i.e. there are more distinct values beyond what fit in the byte budget).
+
+  NULL values are kept as a valid distinct value — they're meaningful in parameter widgets
+  (\"no value set\") and match the per-field MBQL path's storage behavior.
+
+  Used by the bulk / UNION distinct-fetching paths to finalize per-field value sets in memory."
+  [values]
+  (loop [str-length 0
+         acc        (sorted-set)
+         values     values]
+    (cond
+      (empty? values)
+      {:values (vec acc) :has_more_values false}
+
+      (contains? acc (first values))
+      (recur str-length acc (rest values))
+
+      :else
+      (let [new-str-length (+ str-length (count (str (first values))))]
+        (if (> new-str-length *total-max-length*)
+          {:values (vec acc) :has_more_values true}
+          (recur new-str-length (conj acc (first values)) (rest values)))))))
+
+;;; TODO -- move into [[metabase.warehouse-schema.metadata-from-qp]] ??
+(mu/defn distinct-values
+  "Fetch raw distinct values for `field` from the warehouse, row-capped at
+  `*distinct-limit*`. Returns `{:values rows-as-1-tuples}`.
+
+  Callers that persist these values via `persist-field-values!` get the char-length cap +
+  `:has_more_values` computation for free. Callers that need to surface values directly
+  (e.g. parameter widgets) should apply `take-by-length` + their own `:has_more_values`
+  derivation, as `parameters/field-values` does."
+  [field :- [:or
+             (ms/InstanceOf :model/Field)
+             ::lib.schema.metadata/column]]
+  (try
+    (let [field  (cond-> field
+                   ;; a caller may hand us a Field hydrated with its Table, which is not part of column metadata
+                   (t2/model field) (-> (dissoc :table) (lib-be/instance->metadata :metadata/column)))
+          result (metadata-from-qp/table-query
+                  (:table-id field)
+                  (fn [query]
+                    (-> query
+                        (lib/breakout field)
+                        (lib/limit *distinct-limit*)))
+                  qp.reducible/default-rff)]
+      {:values (-> result :data :rows)})
+    (catch Throwable e
+      (log/errorf "Error fetching field values: %s" (ex-message e))
+      nil)))
+
+(defn- delete-duplicates-and-return-latest!
+  "Takes a list of field values, return a map of field-id -> latest FieldValues.
+
+  If a field has more than one Field Values, delete the old ones. This is a workaround for the issue of stale
+  FieldValues rows (metabase#668) In order to mitigate the impact of duplicates, we return the most recently updated
+  row, and delete the older rows.
+
+  It assumes that all rows are of the same type. Rows could be from multiple field-ids."
+  [fvs]
+  (let [fvs-grouped-by-field-id (update-vals (group-by :field_id fvs)
+                                             #(sort-by :updated_at u/reverse-compare %))
+        to-delete-fv-ids        (->> (vals fvs-grouped-by-field-id)
+                                     (mapcat rest)
+                                     (map :id))]
+    (when (seq to-delete-fv-ids)
+      (warehouse-schema.db/delete-field-values! to-delete-fv-ids))
+    (update-vals fvs-grouped-by-field-id first)))
+
+(defn- get-latest-field-values
+  "This returns the FieldValues with the given :type and :hash_key for the given Field.
+  This may implicitly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
+  [field-id type hash]
+  (assert (= (nil? hash) (= type :full)) ":hash_key must be nil iff :type is :full")
+  (-> (warehouse-schema.db/field-values-of-type field-id type hash)
+      delete-duplicates-and-return-latest!
+      (get field-id)))
+
+(defn get-latest-full-field-values
+  "This returns the full FieldValues for the given Field.
+   This may implicitly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
+  [field-id]
+  (get-latest-field-values field-id :full nil))
+
+(def ^:private ^:dynamic *fv-select-batch-size*
+  "Chunk size when fetching FieldValues by `field_id [:in …]`. Keeps a single SQL `IN (…)` clause
+  under the smallest driver parameter limit (Oracle: 1000, SQL Server: 2100). Wide tables can
+  have thousands of list-eligible fields, so we partition before issuing the select."
+  500)
+
+(defn batched-get-latest-full-field-values
+  "Batched version of [[get-latest-full-field-values]] .
+  Takes a list of field-ids and returns a map of field-id -> full FieldValues.
+  This may implicitly delete shadowed entries in the database, see [[delete-duplicates-and-return-latest!]]"
+  [field-ids]
+  (delete-duplicates-and-return-latest!
+   (when (seq field-ids)
+     (mapcat (fn [batch]
+               (warehouse-schema.db/full-field-values-for-fields batch))
+             (partition-all *fv-select-batch-size* field-ids)))))
+
+(defn persist-field-values!
+  "Persist raw distinct values for a single field. Caller passes raw values fetched from the
+  warehouse; this function applies the in-memory cap via `limit-values`, detects whether the
+  warehouse-side row LIMIT fired (by counting raw values against `*distinct-limit*`), and
+  combines both signals into `:has_more_values`. Compares the result against `existing-fv` and
+  creates / updates / skips / deletes as appropriate. Returns one of `::fv-skipped`,
+  `::fv-updated`, `::fv-created`, or `::fv-deleted`.
+
+  - `existing-fv`: the current FieldValues row for this field, or `nil` if none exists.
+  - `raw-values`: raw distinct values from the warehouse (no pre-capping required).
+
+  Note that this only persists *Full* FieldValues. Advanced FieldValues for the same field are
+  deleted as a side effect of `clear-field-values-for-field!` when the capped value set is empty."
+  [field existing-fv raw-values]
+  (let [field-name      (or (:name field) (:id field))
+        row-cap-hit?    (>= (count raw-values) *distinct-limit*)
+        {values        :values
+         char-cap-hit? :has_more_values} (limit-values raw-values)
+        has-more-values (boolean (or row-cap-hit? char-cap-hit?))]
+    (cond
+      (empty? values)
+      (do
+        (clear-field-values-for-field! field)
+        ::fv-deleted)
+
+      ;; if FieldValues object doesn't exist create one
+      (nil? existing-fv)
+      (do
+        (log/debugf "Storing FieldValues for Field %s..." field-name)
+        (warehouse-schema.db/find-or-insert-full-field-values! (u/the-id field) has-more-values values)
+        ::fv-created)
+
+      ;; if existing FieldValues won't change, skip it
+      (and (= (:values existing-fv) values)
+           (= (:has_more_values existing-fv) has-more-values))
+      (do
+        (log/debugf "FieldValues for Field %s remain unchanged. Skipping..." field-name)
+        ::fv-skipped)
+
+      ;; otherwise the FieldValues object already exists; update values in it
+      :else
+      (do
+        (log/debugf "Storing updated FieldValues for Field %s..." field-name)
+        (warehouse-schema.db/update-field-values! (u/the-id existing-fv)
+                                                  (m/remove-vals nil?
+                                                                 {:has_more_values       has-more-values
+                                                                  :values                values
+                                                                  :human_readable_values (fixup-human-readable-values existing-fv values)}))
+        ::fv-updated))))
+
+(defn create-or-update-full-field-values!
+  "Create or update the full FieldValues object for `field`. If the FieldValues object already
+  exists, then update values for it; otherwise create a new FieldValues object with the newly
+  fetched values. Returns whether the field values were created / updated / deleted as a result
+  of this call, or `::fv-fetch-failed` if the warehouse scan failed and nothing was changed.
+
+  Note that if the full FieldValues are create / updated / deleted, it'll delete all the
+  Advanced FieldValues of the same `field`."
+  [field & {:keys [field-values]}]
+  (if (field-should-have-field-values? field)
+    (let [existing-fv (or field-values (get-latest-full-field-values (u/the-id field)))]
+      ;; `distinct-values` returns nil when the warehouse scan failed, which is not the same as a
+      ;; field that genuinely has no values: persisting it would read as "empty" and delete the
+      ;; values we already have. Leave whatever is cached in place instead.
+      (if-let [{rows :values} (distinct-values field)]
+        ;; rows are 1-tuples — unwrap for storage.
+        (persist-field-values! field existing-fv (seq (map first rows)))
+        ::fv-fetch-failed))
+    (do
+      (clear-field-values-for-field! field)
+      ::fv-deleted)))
+
+(def ^:private in-flight-fetches
+  "`cache-key` -> `{:promise :future-ref :timer}` for the fetch currently running for that key.
+  See [[detached-fetch!]]."
+  (atom {}))
+
+(def ^:dynamic *fetch-max-age-ms*
+  "How long a detached fetch may run before it is canceled, and how long a caller will wait on one.
+
+  Only a fetch wedged outside the query processor can reach this: the warehouse query itself is
+  already capped by `*query-timeout-ms*` (`MB_DB_QUERY_TIMEOUT_MINUTES`, 20 minutes in prod), so
+  this is a backstop for work blocked somewhere the QP cannot cancel — acquiring a connection, or a
+  driver that ignores cancellation.
+
+  It bounds the wait as well as the work because [[sweep-stalled-fetches!]] only runs when a request
+  arrives, and the case this guards against is precisely the one where none can: callers parked on a
+  wedged fetch are request threads, so enough of them stop the server from serving anything at all.
+
+  Deliberately a backstop rather than a request-latency bound. A value nearer a sensible HTTP
+  timeout would hand the thread back far sooner, but returning before the values are ready changes
+  what this endpoint promises its callers, and that is a decision of its own."
+  (* 60 60 1000))
+
+(def ^:dynamic *max-in-flight-fetches*
+  "Ceiling on the registry, independent of whatever else happens to bound it.
+
+  Callers park on their fetch, so the number in flight is today limited by the request thread pool
+  — but that is an accident of how these endpoints are served, not a guarantee this namespace can
+  make. Past this many, [[detached-fetch!]] refuses the fetch with a 503 rather than letting the
+  registry grow: reaching this means something is wrong, and failing loudly beats absorbing it.
+
+  Sized well clear of the request thread pool (50 by default), so an instance has to have raised
+  `MB_JETTY_MAXTHREADS` well past its default before this can be reached at all."
+  200)
+
+(defn- complete-fetch!
+  "Drop `entry` from the registry and hand `result` to everyone waiting on it.
+
+  Dropping the entry before delivering means a caller that wakes up and immediately asks again
+  starts a fresh fetch rather than re-attaching to this finished one. The entry is removed only if
+  it is still the registered one, so a fetch that was already swept can't evict its replacement."
+  [cache-key entry result]
+  (swap! in-flight-fetches (fn [m]
+                             (cond-> m
+                               (identical? entry (get m cache-key)) (dissoc cache-key))))
+  (deliver (:promise entry) result))
+
+(defn- sweep-stalled-fetches!
+  "Cancel every fetch that has outlived [[*fetch-max-age-ms*]] and fail whoever is waiting on it.
+
+  A fetch clears its own registry entry, so this fires only when that failed or when the work is
+  genuinely wedged. It completes the entries rather than merely forgetting them: callers park on the
+  promise, so an entry dropped without delivery leaves them blocked forever, each holding a request
+  thread. Deliberately logs no cache keys — printing one is a way this could throw, and a backstop
+  that throws is not a backstop."
+  []
+  (let [swept (atom 0)]
+    (doseq [[cache-key {:keys [timer future-ref] :as entry}] @in-flight-fetches
+            :when (> (u/since-ms timer) *fetch-max-age-ms*)]
+      (some-> @future-ref future-cancel)
+      (complete-fetch! cache-key entry
+                       {:error (ex-info (tru "Timed out fetching field values.") {:cache-key cache-key})})
+      (swap! swept inc))
+    (when (pos? @swept)
+      (log/warnf "Canceled %d FieldValues fetch(es) still running after %d ms" @swept *fetch-max-age-ms*))))
+
+(defn- claim-fetch!
+  "Register `entry` for `cache-key` and return whichever entry is registered once we are done, or
+  nil when the registry is already full.
+
+  The `contains?` check comes first deliberately: joining a fetch already in flight adds no entry,
+  so a full registry must not turn those callers away. Only a new key can be refused. Checking
+  capacity inside the swap keeps the ceiling exact under concurrent claims."
+  [cache-key entry]
+  (-> (swap! in-flight-fetches (fn [m]
+                                 (if (or (contains? m cache-key)
+                                         (>= (count m) *max-in-flight-fetches*))
+                                   m
+                                   (assoc m cache-key entry))))
+      (get cache-key)))
+
+(defn detached-fetch!
+  "Run `thunk` on a background thread and return its result, rethrowing anything it throws.
+
+  Calls sharing a `cache-key` while a fetch is in flight all wait on that one run instead of
+  starting their own. Because the work is detached from the calling thread, it runs to completion
+  — and persists whatever it fetched — even when the caller stops waiting, e.g. when the HTTP
+  request that asked for the values is canceled."
+  [cache-key thunk]
+  ;; sweep here rather than on a timer: the registry only grows when something is inserted, so this
+  ;; runs exactly when it needs to. Guarded because a failure to sweep must not fail this caller.
+  (try
+    (sweep-stalled-fetches!)
+    (catch Throwable e
+      (log/warn e "Error sweeping stalled FieldValues fetches")))
+  (let [entry {:promise (promise), :future-ref (atom nil), :timer (u/start-timer)}
+        this  (or (claim-fetch! cache-key entry)
+                  (throw (ex-info (tru "Too many field values fetches are already running. Please try again shortly.")
+                                  {:status-code   503
+                                   :max-in-flight *max-in-flight-fetches*})))]
+    (when (identical? this entry)
+      ;; Every path from here must reach `complete-fetch!`. An entry left in the registry with its
+      ;; promise undelivered is worse than a leak: every later caller for that key parks on it
+      ;; forever, holding a request thread each.
+      (try
+        (reset! (:future-ref entry)
+                (future
+                  (try
+                    (complete-fetch! cache-key entry {:value (thunk)})
+                    (catch Throwable e
+                      (complete-fetch! cache-key entry {:error e})
+                      ;; log only once everyone waiting has been served: an appender that throws here
+                      ;; would otherwise strand them. Log at all because when every caller has walked
+                      ;; away there is nobody left to deref the promise, so this is the only record.
+                      (log/warnf e "Error fetching FieldValues for %s" (pr-str cache-key))))))
+        ;; submitting can fail on its own — `future`'s pool rejects new work once the JVM starts
+        ;; shutting down, and the registry entry is already in place by then
+        (catch Throwable e
+          (complete-fetch! cache-key entry {:error e}))))
+    (let [{:keys [value error] :as result} (deref (:promise this) *fetch-max-age-ms* ::timed-out)]
+      (cond
+        (= result ::timed-out)
+        (throw (ex-info (tru "Timed out waiting for field values.")
+                        {:status-code 503
+                         :timeout-ms  *fetch-max-age-ms*}))
+
+        error
+        (throw error)
+
+        :else
+        value))))
+
+(defn get-or-create-full-field-values!
+  "Create FieldValues for a `Field` if they *should* exist but don't already exist. Returns the existing or newly
+  created FieldValues for `Field`. Updates :last_used_at so sync will know this is active."
+  [{field-id :id field-values :values :as field}]
+  {:pre [(integer? field-id)]}
+  (when (field-should-have-field-values? field)
+    (let [existing (or (not-empty field-values) (get-latest-full-field-values field-id))]
+      (if (or (not existing) (inactive? existing))
+        (detached-fetch!
+         [:full field-id]
+         (fn []
+           (case (create-or-update-full-field-values! field)
+             ::fv-deleted
+             nil
+
+             ::fv-created
+             (get-latest-full-field-values field-id)
+
+             (do
+               (when existing
+                 (warehouse-schema.db/touch-field-values! (:id existing)))
+               (get-latest-full-field-values field-id)))))
+        (do
+          (warehouse-schema.db/touch-field-values! (:id existing))
+          existing)))))
+
+;;; +----------------------------------------------------------------------------------------------------------------+
+;;; |                                              Serialization                                                     |
+;;; +----------------------------------------------------------------------------------------------------------------+
+
+(defmethod serdes/entity-id "FieldValues" [_ _] nil)
+
+(defmethod serdes/generate-path "FieldValues" [_ {:keys [field_id]}]
+  (conj (serdes/generate-path "Field" {:id field_id})
+        {:model "FieldValues" :id "0"}))
+
+(defmethod serdes/deserialization-dependencies "FieldValues" [fv]
+  (let [db-path (first (serdes/path fv))]
+    [[db-path]]))
+
+(defmethod serdes/load-find-local "FieldValues" [path]
+  ;; Delegate to finding the parent Field, then look up its corresponding FieldValues.
+  (let [field (serdes/load-find-local (pop path))]
+    ;; We only serialize the full values, see [[metabase.warehouse-schema.models.field/with-values]]
+    (get-latest-full-field-values (:id field))))
+
+(defn- field-path->field-ref [field-values-path]
+  (let [[db schema table field :as field-ref] (map :id (pop field-values-path))]
+    (if field
+      field-ref
+      ;; It's too short, so no schema. Shift them over and add a nil schema.
+      [db nil schema table])))
+
+(defmethod serdes/make-spec "FieldValues" [_model-name _opts]
+  {:copy      [:values :human_readable_values :has_more_values :hash_key]
+   :transform {:created_at   (serdes/date)
+               :last_used_at (serdes/date)
+               :type         (serdes/kw)
+               :field_id     {::serdes/fk true
+                              :export     (constantly ::serdes/skip)
+                              :import-with-context (fn [current _ _]
+                                                     (let [field-ref (field-path->field-ref (serdes/path current))]
+                                                       (serdes/*import-field-fk* field-ref)))}}
+   :defaults {:has_more_values false}})
+
+(defmethod serdes/load-update! "FieldValues" [_ ingested local]
+  ;; It's illegal to change the :type and :hash_key fields, and there's a pre-update check for this.
+  ;; This drops those keys from the incoming FieldValues iff they match the local one. If they are actually different,
+  ;; this preserves the new value so the normal error is produced.
+  (let [ingested (cond-> ingested
+                   (= (:type ingested)     (:type local))     (dissoc :type)
+                   (= (:hash_key ingested) (:hash_key local)) (dissoc :hash_key))]
+    ((get-method serdes/load-update! "") "FieldValues" ingested local)))
+
+(def ^:private field-values-slug "___fieldvalues")
+
+(defmethod serdes/storage-path "FieldValues" [fv _]
+  ;; [path to table "fields" "field-name___fieldvalues"] since there's zero or one FieldValues per Field, and Fields
+  ;; don't have their own directories.
+  (let [hierarchy    (serdes/path fv)
+        field-path   (serdes/storage-path-prefixes (drop-last hierarchy))]
+    (update field-path (dec (count field-path))
+            (fn [segment] (update segment :label str field-values-slug)))))

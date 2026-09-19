@@ -1,0 +1,98 @@
+import userEvent from "@testing-library/user-event";
+
+import {
+  setupCurrentUserEndpoint,
+  setupPasswordCheckEndpoint,
+  setupPasswordResetTokenEndpoint,
+  setupPropertiesEndpoints,
+  setupResetPasswordEndpoint,
+} from "__support__/server-mocks";
+import { act, renderWithProviders, screen, waitFor } from "__support__/ui";
+import { Route } from "metabase/router";
+import { createMockSettings, createMockUser } from "metabase-types/api/mocks";
+
+import { ResetPassword } from "./ResetPassword";
+
+interface SetupOpts {
+  isTokenValid?: boolean;
+}
+
+const setup = ({ isTokenValid = true }: SetupOpts = {}) => {
+  setupPasswordResetTokenEndpoint({ valid: isTokenValid });
+  setupResetPasswordEndpoint();
+  setupPasswordCheckEndpoint();
+  setupCurrentUserEndpoint(createMockUser());
+  setupPropertiesEndpoints(createMockSettings());
+
+  return renderWithProviders(
+    <>
+      <Route path="/" element={<TestHome />} />
+      <Route path="/another-page" element={<AnotherPage />} />
+      <Route path="/auth/reset_password/:token" element={<ResetPassword />} />
+    </>,
+    {
+      withRouter: true,
+      initialRoute: "/auth/reset_password/token",
+    },
+  );
+};
+
+const TestHome = () => <div>Home</div>;
+const AnotherPage = () => <div>Another page</div>;
+
+describe("ResetPassword", () => {
+  it("should show a form when token validations succeeds", async () => {
+    setup({ isTokenValid: true });
+    expect(await screen.findByText("New password")).toBeInTheDocument();
+  });
+
+  it("should show an error message when token validation fails", async () => {
+    setup({ isTokenValid: false });
+    expect(
+      await screen.findByText(/that's an expired link/),
+    ).toBeInTheDocument();
+  });
+
+  describe("when form is submitted", () => {
+    const fillAndSubmit = async () => {
+      expect(await screen.findByText("New password")).toBeInTheDocument();
+
+      await userEvent.type(
+        screen.getByLabelText("Create a password"),
+        "#Password#1!",
+      );
+      await userEvent.type(
+        screen.getByLabelText("Confirm your password"),
+        "#Password#1!",
+      );
+      await waitFor(() => {
+        expect(
+          screen.getByRole("button", { name: "Save new password" }),
+        ).toBeEnabled();
+      });
+
+      await userEvent.click(
+        screen.getByRole("button", { name: "Save new password" }),
+      );
+    };
+
+    it("should redirect to home page by default", async () => {
+      setup({ isTokenValid: true });
+      await fillAndSubmit();
+      expect(await screen.findByText("Home")).toBeInTheDocument();
+    });
+
+    it("should allow a custom redirect to be specified", async () => {
+      const { router } = setup({ isTokenValid: true });
+
+      act(() => {
+        router?.navigate(`/auth/reset_password/token?redirect=/another-page`, {
+          replace: true,
+        });
+      });
+
+      await fillAndSubmit();
+      expect(await screen.findByText("Another page")).toBeInTheDocument();
+    });
+  });
+});

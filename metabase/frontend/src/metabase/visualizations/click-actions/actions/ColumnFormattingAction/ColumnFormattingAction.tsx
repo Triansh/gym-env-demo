@@ -1,0 +1,116 @@
+import { Fragment } from "react";
+import { t } from "ttag";
+
+import { Box } from "metabase/ui";
+import ChartSettingsWidget from "metabase/visualizations/components/ChartSettingsWidget";
+import {
+  WidgetPopoverPortalContext,
+  useWidgetPopoverPortal,
+} from "metabase/visualizations/components/settings/WidgetPopoverPortalContext";
+import type {
+  ClickActionPopoverProps,
+  LegacyDrill,
+} from "metabase/visualizations/types";
+import { getSettingsWidgetsForSeries, updateSettings } from "metabase/viz-core";
+import * as Lib from "metabase-lib";
+import { getColumnKey } from "metabase-lib/v1/queries/utils/column-key";
+import type { VisualizationSettings } from "metabase-types/api";
+
+export const POPOVER_TEST_ID = "column-formatting-settings";
+
+export const ColumnFormattingAction: LegacyDrill = ({ question, clicked }) => {
+  const { isEditable } = Lib.queryDisplayInfo(question.query());
+
+  if (
+    !clicked ||
+    clicked.value !== undefined ||
+    !clicked.column ||
+    clicked?.extraData?.isRawTable ||
+    !isEditable
+  ) {
+    return [];
+  }
+
+  const { column } = clicked;
+
+  const FormatPopover = ({
+    series,
+    onUpdateVisualizationSettings,
+  }: ClickActionPopoverProps) => {
+    const {
+      value: portalValue,
+      setDropdownTarget,
+      setScrollContainer,
+    } = useWidgetPopoverPortal();
+
+    const handleChangeSettings = (settings: VisualizationSettings) => {
+      if (!series) {
+        return;
+      }
+
+      onUpdateVisualizationSettings(
+        updateSettings(series[0].card.visualization_settings, settings),
+      );
+    };
+
+    const widgets = getSettingsWidgetsForSeries(
+      series,
+      handleChangeSettings,
+      false,
+    );
+
+    const columnSettingsWidget = widgets.find(
+      (widget) => widget.id === "column_settings",
+    );
+
+    const { id, ...extraProps } = {
+      ...columnSettingsWidget,
+      props: {
+        ...columnSettingsWidget?.props,
+        initialKey: getColumnKey(column),
+      },
+    };
+
+    if (!columnSettingsWidget || id == null) {
+      return <Fragment />;
+    }
+
+    return (
+      <Box ref={setDropdownTarget}>
+        <WidgetPopoverPortalContext.Provider value={portalValue}>
+          <Box
+            ref={setScrollContainer}
+            pt="xl"
+            mah={600}
+            style={{ overflowY: "auto" }}
+          >
+            <ChartSettingsWidget
+              {...extraProps}
+              id={id}
+              key={columnSettingsWidget?.id}
+              hidden={false}
+              dataTestId={POPOVER_TEST_ID}
+            />
+          </Box>
+        </WidgetPopoverPortalContext.Provider>
+      </Box>
+    );
+  };
+
+  return [
+    {
+      name: "formatting",
+      title: t`Column formatting`,
+      section: "sort",
+      buttonType: "sort",
+      icon: "gear",
+      tooltip: t`Column formatting`,
+      popoverProps: {
+        position: "right-start",
+        offset: 20,
+        styles: { dropdown: { overflow: "visible" } },
+      },
+      popover: FormatPopover,
+    },
+  ];
+};

@@ -1,0 +1,68 @@
+(ns metabase.query-processor.middleware.annotate.legacy-helper-fns
+  "Helper functions that used to live in the old implementation of [[metabase.query-processor.middleware.annotate]] that
+  no longer do since we rewrote it to use Lib. These were used by various drivers for various nefarious purposes.
+
+  I'm keeping them around for now so drivers can continue to use them until we work on converting drivers to MBQL
+  5 (at which point they can use Lib directly)."
+  (:require
+   ;; existing legacy usage -- don't use legacy MBQL namespaces in QP going forward
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.normalize :as mbql.normalize]
+   ;; helpers convert to legacy MBQL for drivers not yet on MBQL 5; typed against the legacy schema
+   ^{:clj-kondo/ignore [:discouraged-namespace]} [metabase.legacy-mbql.schema :as mbql.s]
+   [metabase.lib.core :as lib]
+   [metabase.lib.metadata :as lib.metadata]
+   [metabase.lib.schema :as lib.schema]
+   [metabase.lib.schema.common :as lib.schema.common]
+   [metabase.query-processor.error-type :as qp.error-type]
+   ;; this ns is itself the legacy compat layer; it reads the store the legacy pipeline fills
+   ^{:clj-kondo/ignore [:deprecated-namespace]} [metabase.query-processor.store :as qp.store]
+   [metabase.query-processor.util.add-alias-info :as-alias add]
+   [metabase.util.i18n :refer [tru]]
+   [metabase.util.malli :as mu]))
+
+(mu/defn legacy-inner-query->mbql5-query :- ::lib.schema/query
+  "Convert a legacy `inner-query` to an MBQL 5 query. Requires bound QP store."
+  {:deprecated "0.57.0"}
+  [inner-query :- :metabase.lib.util/query-like]
+  ;; existing usage -- don't use going forward
+  #_{:clj-kondo/ignore [:deprecated-var]}
+  (qp.store/cached [:mbql5-query (hash inner-query)]
+    (try
+      (lib/query-from-legacy-inner-query
+       (qp.store/metadata-provider)
+       (:id (lib.metadata/database (qp.store/metadata-provider)))
+       (mbql.normalize/normalize ::mbql.s/MBQLInnerQuery inner-query))
+      (catch Throwable e
+        (throw (ex-info (tru "Error converting query to MBQL 5: {0}" (ex-message e))
+                        {:inner-query inner-query, :type qp.error-type/qp}
+                        e))))))
+
+(mu/defn legacy-query->mbql5-query :- ::lib.schema/query
+  "Convert a legacy outer `legacy-query` to an MBQL 5 query. Requires bound QP store."
+  [legacy-query :- :metabase.lib.util/legacy-query]
+  (lib/query
+   (qp.store/metadata-provider)
+   ;; if this query has a `:native` query added to it already then remove that so we don't get schema validation
+   ;; errors
+   (cond-> legacy-query
+     ((every-pred :native :query) legacy-query)
+     (dissoc :native))))
+
+(mu/defn aggregation-name :- ::lib.schema.common/non-blank-string
+  "Return an appropriate aggregation name/alias *used inside a query* for an `:aggregation` subclause (an aggregation
+  or expression). Takes an options map as schema won't support passing keypairs directly as a varargs.
+
+  These names are also used directly in queries, e.g. in the equivalent of a SQL `AS` clause.
+
+  DEPRECATED: use [[mbql-5-aggregation-name]] going forward."
+  {:deprecated "0.64.0"}
+  [legacy-inner-query :- :metabase.lib.util/query-like
+   legacy-ag-clause   :- ::mbql.s/Aggregation]
+  (let [ag-clause (lib/->mbql5 legacy-ag-clause)]
+    (or (::add/desired-alias (lib/options ag-clause))
+        (:name (lib/options ag-clause))
+        (lib/column-name
+         ;; this ns is the legacy-MBQL bridge for drivers; the deprecated conversion is its purpose
+         #_{:clj-kondo/ignore [:deprecated-var]}
+         (legacy-inner-query->mbql5-query legacy-inner-query)
+         (lib/->mbql5 legacy-ag-clause)))))

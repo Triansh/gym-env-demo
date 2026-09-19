@@ -1,0 +1,175 @@
+import { parse as parseUrl } from "url";
+
+import { isEqualCard } from "metabase/common/utils/card";
+import { selectQuestionFromOptsBuilder } from "metabase/metadata-store";
+import { createThunkAction } from "metabase/redux";
+import type { Path } from "metabase/router";
+import { getIsNavigationPending, navigate } from "metabase/router";
+import { getBasename } from "metabase/utils/basename";
+import * as Lib from "metabase-lib";
+import type Question from "metabase-lib/v1/Question";
+import { isAdHocModelOrMetricQuestion } from "metabase-lib/v1/metadata/utils/models";
+
+import {
+  getCard,
+  getDatasetEditorTab,
+  getOriginalQuestion,
+  getQueryBuilderMode,
+  getQuestion,
+  getUiControls,
+} from "../store/selectors";
+import { getQueryBuilderModeFromLocation } from "../typed-utils";
+import {
+  getCurrentQueryParams,
+  getPathNameFromQueryBuilderMode,
+  getTableUrlForPristineQuestion,
+  getURLForCardState,
+} from "../utils";
+
+import { setCurrentState } from "./state";
+
+export const UPDATE_URL = "metabase/qb/UPDATE_URL";
+export const updateUrl = createThunkAction(
+  UPDATE_URL,
+  (
+    question?: Question | null,
+    {
+      dirty,
+      replaceState,
+      preserveParameters = true,
+      preserveNavbarState = false,
+      queryBuilderMode,
+      datasetEditorTab,
+      objectId,
+    } = {},
+  ) =>
+    (dispatch, getState) => {
+      if (!question) {
+        question = getQuestion(getState());
+
+        if (!question) {
+          return;
+        }
+      }
+
+      const originalQuestion = getOriginalQuestion(getState());
+      const isAdHocModelOrMetric = isAdHocModelOrMetricQuestion(
+        question,
+        originalQuestion,
+      );
+
+      if (dirty == null) {
+        const uiControls = getUiControls(getState());
+        dirty =
+          !originalQuestion ||
+          (!isAdHocModelOrMetric &&
+            (question.isDirtyComparedTo(originalQuestion) ||
+              uiControls.isModifiedFromNotebook));
+      }
+
+      const { isNative } = Lib.queryDisplayInfo(question.query());
+      // prevent clobbering of hash when there are fake parameters on the question
+      // consider handling this in a more general way, somehow
+      if (!isNative && question.parameters().length > 0) {
+        dirty = true;
+      }
+
+      if (!queryBuilderMode) {
+        queryBuilderMode = getQueryBuilderMode(getState());
+      }
+      if (!datasetEditorTab) {
+        datasetEditorTab = getDatasetEditorTab(getState());
+      }
+
+      const card = isAdHocModelOrMetric
+        ? getCard(getState())!
+        : question.card();
+      const newState = {
+        card,
+        cardId: question.id(),
+        objectId,
+      };
+
+      const { currentState } = getState().qb;
+      const queryParams = preserveParameters ? getCurrentQueryParams() : {};
+      // While we're on the /table/:slug route and the question is still the
+      // pristine default view of that table, keep the canonical /table URL.
+      // Any edit falls through to /question#hash and stays there — we don't
+      // convert a /question entry point into /table.
+      // Compare against the basename-aware path so this still works under
+      // subpath deployments (e.g. /mb/table/...).
+      const isOnTableRoute = window.location.pathname.startsWith(
+        `${getBasename()}/table/`,
+      );
+      const tableUrl =
+        isOnTableRoute && objectId == null && queryBuilderMode === "view"
+          ? getTableUrlForPristineQuestion(
+              question,
+              selectQuestionFromOptsBuilder(getState()),
+            )
+          : null;
+      const url =
+        tableUrl ?? getURLForCardState(newState, dirty, queryParams, objectId);
+
+      const urlParsed = parseUrl(url);
+      const to: Partial<Path> = {
+        pathname: getPathNameFromQueryBuilderMode({
+          pathname: urlParsed.pathname || "",
+          queryBuilderMode,
+          datasetEditorTab,
+        }),
+        search: urlParsed.search ?? undefined,
+        hash: urlParsed.hash ?? undefined,
+      };
+
+      const isSameURL =
+        to.pathname === window.location.pathname &&
+        (to.search || "") === (window.location.search || "") &&
+        (to.hash || "") === (window.location.hash || "");
+      const isSameCard =
+        currentState && isEqualCard(currentState.card, newState.card);
+
+      if (isSameCard && isSameURL) {
+        return;
+      }
+
+      // Saving a card finishes asynchronously, so this can run after the user
+      // has already been sent somewhere else, for instance to the dashboard the
+      // question was just saved into. A `route.lazy` destination keeps the query
+      // builder mounted until its chunk resolves, and this navigation would
+      // replace that pending one. The URL only mirrors the card, so there is
+      // nothing to write if we are leaving.
+      if (getIsNavigationPending()) {
+        return;
+      }
+
+      if (replaceState == null) {
+        const isSameMode =
+          getQueryBuilderModeFromLocation(to).queryBuilderMode ===
+          getQueryBuilderModeFromLocation(window.location).queryBuilderMode;
+
+        // if the serialized card is identical replace the previous state instead of adding a new one
+        // e.x. when saving a new card we want to replace the state and URL with one with the new card ID
+        replaceState = isSameCard && isSameMode;
+      }
+
+      // this is necessary because we can't get the state from history.state
+      dispatch(setCurrentState(newState));
+
+      try {
+        if (replaceState) {
+          navigate(to, {
+            replace: true,
+            state: preserveNavbarState
+              ? { ...newState, preserveNavbarState }
+              : newState,
+          });
+        } else {
+          navigate(to, { state: newState });
+        }
+      } catch (e) {
+        // saving the location state can exceed the session storage quota (metabase#25312)
+        console.warn(e);
+      }
+    },
+);

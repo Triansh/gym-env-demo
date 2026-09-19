@@ -1,0 +1,116 @@
+import { Group } from "@visx/group";
+import { init } from "echarts/core";
+
+import type { StaticChartProps } from "metabase/static-viz/components/StaticVisualization";
+import { readAllPointsOutOfRange } from "metabase/static-viz/lib/data-visibility";
+import { sanitizeSvgForBatik } from "metabase/static-viz/lib/svg";
+import { getChartHeight } from "metabase/static-viz/lib/utils";
+import {
+  getChartLayout,
+  getLegendItems,
+  getScatterPlotModel,
+  getScatterPlotOption,
+  registerEChartsModules,
+} from "metabase/viz-core";
+
+import Watermark from "../../watermark.svg?component";
+import { DataOutOfRangeOverlay } from "../DataOutOfRangeOverlay/DataOutOfRangeOverlay";
+import { Legend } from "../Legend";
+import { calculateLegendRows } from "../Legend/utils";
+
+registerEChartsModules();
+
+const WIDTH = 540;
+const HEIGHT = 360;
+const LEGEND_PADDING = 8;
+
+export function ScatterPlot({
+  rawSeries,
+  settings,
+  renderingContext,
+  width = WIDTH,
+  height = HEIGHT,
+  isStorybook = false,
+  hasDevWatermark = false,
+  fitWithinBounds = false,
+}: StaticChartProps) {
+  const chartModel = getScatterPlotModel(
+    rawSeries,
+    settings,
+    [],
+    renderingContext,
+  );
+
+  const legendItems = getLegendItems(chartModel.seriesModels);
+  const { height: legendHeight, items: legendLayoutItems } =
+    calculateLegendRows({
+      items: legendItems,
+      width,
+      horizontalPadding: LEGEND_PADDING,
+      verticalPadding: LEGEND_PADDING,
+    });
+
+  const chartHeight = getChartHeight({ fitWithinBounds, legendHeight, height });
+
+  const chart = init(null, null, {
+    renderer: "svg",
+    ssr: true,
+    width,
+    height: chartHeight,
+  });
+
+  const chartLayout = getChartLayout(
+    chartModel,
+    settings,
+    false,
+    width,
+    chartHeight,
+    renderingContext,
+  );
+
+  const option = getScatterPlotOption(
+    chartModel,
+    chartLayout,
+    false,
+    null,
+    [],
+    settings,
+    width,
+    false,
+    renderingContext,
+  );
+  chart.setOption(option);
+
+  const chartSvg = sanitizeSvgForBatik(chart.renderToSVGString(), isStorybook);
+  const allPointsOutOfRange = readAllPointsOutOfRange(chart);
+  chart.dispose();
+
+  const totalHeight = fitWithinBounds ? height : height + legendHeight;
+
+  return (
+    <svg xmlns="http://www.w3.org/2000/svg" width={width} height={totalHeight}>
+      <Legend items={legendLayoutItems} />
+      <Group top={legendHeight}>
+        <g dangerouslySetInnerHTML={{ __html: chartSvg }}></g>
+      </Group>
+      {hasDevWatermark && (
+        <Watermark
+          x={legendHeight}
+          y="0"
+          height={height}
+          width={width}
+          preserveAspectRatio="xMinYMin slice"
+          fill={renderingContext.getColor("text-secondary")}
+          opacity={0.2}
+        />
+      )}
+      {allPointsOutOfRange && (
+        <DataOutOfRangeOverlay
+          width={width}
+          height={totalHeight}
+          renderingContext={renderingContext}
+        />
+      )}
+    </svg>
+  );
+}

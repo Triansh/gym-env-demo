@@ -1,0 +1,132 @@
+import { useLayoutEffect, useState } from "react";
+import { t } from "ttag";
+
+import { LeaveRouteConfirmModal } from "metabase/common/components/LeaveConfirmModal";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { PageContainer } from "metabase/common/data-studio/components/PageContainer";
+import { useMetadataToasts } from "metabase/common/hooks";
+import { useSelector } from "metabase/redux";
+import { useParams } from "metabase/router";
+import { Alert, Box, Card, Stack } from "metabase/ui";
+import type * as Urls from "metabase/urls";
+import { isResourceNotFoundError } from "metabase/utils/errors";
+import {
+  useGetPythonLibraryQuery,
+  useUpdatePythonLibraryMutation,
+} from "metabase-enterprise/api/python-transform-library";
+import { getIsRemoteSyncReadOnly } from "metabase-enterprise/remote_sync/selectors";
+
+import { PythonEditor } from "../../components/PythonEditor";
+
+import { PythonLibraryEditorHeader } from "./PythonLibraryEditorHeader";
+import S from "./PythonLibraryEditorPage.module.css";
+
+const EMPTY_LIBRARY_SOURCE = `
+# This is your Python library.
+# You can add functions and classes here that can be reused in Python transforms.
+`
+  .trim()
+  .concat("\n");
+
+export function PythonLibraryEditorPage() {
+  const { path } = useParams<Urls.TransformPythonLibraryParams>();
+  return path == null ? null : <PythonLibraryEditor path={path} />;
+}
+
+type PythonLibraryEditorProps = {
+  path: string;
+};
+
+function PythonLibraryEditor({ path }: PythonLibraryEditorProps) {
+  const [source, setSource] = useState(EMPTY_LIBRARY_SOURCE);
+  const isRemoteSyncReadOnly = useSelector(getIsRemoteSyncReadOnly);
+
+  const {
+    data: library,
+    isLoading,
+    error,
+  } = useGetPythonLibraryQuery({ path });
+  const [updatePythonLibrary, { isLoading: isSaving }] =
+    useUpdatePythonLibraryMutation();
+  const { sendSuccessToast, sendErrorToast } = useMetadataToasts();
+
+  function handleRevert() {
+    if (isLoading) {
+      return;
+    }
+
+    if (isResourceNotFoundError(error)) {
+      setSource(EMPTY_LIBRARY_SOURCE);
+      return;
+    }
+
+    if (library != null) {
+      setSource(library.source || "");
+    }
+  }
+
+  async function handleSave() {
+    try {
+      await updatePythonLibrary({ path, source }).unwrap();
+      sendSuccessToast(t`Python library saved`);
+    } catch (error) {
+      sendErrorToast(t`Python library could not be saved`);
+    }
+  }
+
+  // When the library loads, set the source to the current library source
+  useLayoutEffect(() => {
+    if (library?.source) {
+      setSource(library.source);
+    } else {
+      setSource(EMPTY_LIBRARY_SOURCE);
+    }
+  }, [library]);
+
+  const isDirty = source !== (library?.source || EMPTY_LIBRARY_SOURCE);
+
+  if (isLoading || (error && !isResourceNotFoundError(error))) {
+    return (
+      <Box p="lg">
+        <LoadingAndErrorWrapper loading={isLoading} error={error} />
+      </Box>
+    );
+  }
+
+  return (
+    <>
+      <PageContainer>
+        <Stack>
+          <PythonLibraryEditorHeader
+            onSave={handleSave}
+            onRevert={handleRevert}
+            isDirty={isDirty && !isRemoteSyncReadOnly}
+            isSaving={isSaving}
+          />
+
+          {isRemoteSyncReadOnly && (
+            <Alert
+              size="compact"
+              className={S.flexStart}
+              color="warning"
+              title={t`The Python library is not editable because Remote Sync is in read-only mode.`}
+              w="auto"
+            />
+          )}
+        </Stack>
+
+        <Card withBorder p={0}>
+          <PythonEditor
+            value={source}
+            onChange={setSource}
+            withPandasCompletions
+            className={S.editor}
+            data-testid="python-editor"
+            readOnly={isRemoteSyncReadOnly}
+          />
+        </Card>
+      </PageContainer>
+      <LeaveRouteConfirmModal isEnabled={isDirty} />
+    </>
+  );
+}

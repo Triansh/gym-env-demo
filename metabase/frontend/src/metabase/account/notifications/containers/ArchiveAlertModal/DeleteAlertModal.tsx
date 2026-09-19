@@ -1,0 +1,79 @@
+import { t } from "ttag";
+
+import {
+  skipToken,
+  useGetNotificationQuery,
+  useUpdateNotificationMutation,
+} from "metabase/api";
+import { LoadingAndErrorWrapper } from "metabase/common/components/LoadingAndErrorWrapper";
+import { useToast } from "metabase/common/hooks/use-toast";
+import { DeleteAlertConfirmModal } from "metabase/notifications/modals/DeleteAlertConfirmModal";
+import { useSearchParams } from "metabase/router";
+import type { Notification } from "metabase-types/api";
+
+import { getAlertId } from "../../selectors";
+
+type DeleteAlertModalProps = {
+  params: {
+    alertId?: string;
+  };
+  onClose: () => void;
+};
+
+export const DeleteAlertModal = ({
+  params,
+  onClose,
+}: DeleteAlertModalProps) => {
+  const id = getAlertId(params?.alertId);
+
+  const [sendToast] = useToast();
+  const [searchParams] = useSearchParams();
+
+  const hasUnsubscribed = Boolean(searchParams.get("unsubscribed"));
+
+  const {
+    data: notification,
+    isLoading,
+    error,
+  } = useGetNotificationQuery(id || skipToken);
+  const [updateNotification] = useUpdateNotificationMutation();
+
+  const handleDelete = async (itemToDelete: Notification) => {
+    const result = await updateNotification({
+      ...itemToDelete,
+      active: false,
+    });
+
+    if (result.error) {
+      sendToast({
+        icon: "warning",
+        toastColor: "feedback-negative",
+        message: t`An error occurred`,
+      });
+      return;
+    }
+
+    sendToast({ message: t`The alert was successfully deleted.` });
+    onClose();
+  };
+
+  return (
+    <LoadingAndErrorWrapper loading={isLoading} error={error}>
+      {() =>
+        notification ? (
+          <DeleteAlertConfirmModal
+            title={
+              hasUnsubscribed
+                ? t`You’re unsubscribed. Delete this alert as well?`
+                : undefined
+            }
+            onConfirm={() => handleDelete(notification)}
+            onClose={onClose}
+          />
+        ) : (
+          <div>{t`Not found`}</div>
+        )
+      }
+    </LoadingAndErrorWrapper>
+  );
+};
