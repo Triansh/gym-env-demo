@@ -1,1 +1,0 @@
-export const registration = "registration";

@@ -1,1 +1,0 @@
-export { DataPermissionsPage } from "./DataPermissionsPage";

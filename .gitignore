@@ -11,9 +11,19 @@ venv/
 env/
 ENV/
 
-# Mac OS
+# Mac OS / System
 .DS_Store
+Thumbs.db
 
-# Metabase data / logs
+# Evaluation Rollout Runtime & Artifacts
+jobs_state.json
+rollout_artifacts/
+
+# Metabase data / logs / build artifacts
 metabase/*.db
 metabase/*.log
+metabase/.babel_cache/
+metabase/.loki/
+metabase/node_modules/
+metabase/target/
+metabase/resources/frontend_client/

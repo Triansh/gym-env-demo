@@ -1,1 +1,0 @@
-export { TimelineEventInfo } from "./TimelineEventInfo";

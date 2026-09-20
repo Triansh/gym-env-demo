@@ -1,1 +1,0 @@
-export { TimelineEventsBand } from "./TimelineEventsBand";
