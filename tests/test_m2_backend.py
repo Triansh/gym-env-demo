@@ -13,8 +13,34 @@ from fastapi.testclient import TestClient
 from backend.api.server import app, store
 from backend.jobs import TaskValidationError, create_job, load_and_validate_tasks
 from backend.models import ErrorType, JobStatus, RolloutStatus
-from backend.store import JobStore
+from backend.db import SQLiteStore
 from backend.workers import run_job, _worker
+
+
+@pytest.fixture(autouse=True)
+def isolate_test_db(tmp_path, monkeypatch):
+    """
+    Ensure all tests run using an isolated temporary SQLite database
+    and temporary artifact directory, never reading or writing to production paths
+    (e.g. backend/deeptune.db or rollout_artifacts/).
+    """
+    import backend.configs as configs_module
+    import backend.api.server as server_module
+    import backend.rollout.runner as runner_module
+    import backend.db as db_module
+
+    test_db = tmp_path / "test_deeptune.db"
+    test_artifacts = tmp_path / "test_rollout_artifacts"
+    test_artifacts.mkdir(parents=True, exist_ok=True)
+
+    monkeypatch.setattr(configs_module, "SQLITE_DB_PATH", test_db)
+    monkeypatch.setattr(configs_module, "ARTIFACTS_ROOT", test_artifacts)
+    monkeypatch.setattr(server_module, "ARTIFACTS_ROOT", test_artifacts)
+    monkeypatch.setattr(runner_module, "ARTIFACTS_ROOT", test_artifacts)
+
+    test_store = SQLiteStore(db_path=test_db)
+    monkeypatch.setattr(server_module, "store", test_store)
+    yield test_store
 
 
 # ---------------------------------------------------------------------------
@@ -77,7 +103,7 @@ def test_task_ingestion_validation_failures():
 # 2. Critical Failure Isolation Test (Plan Section 25)
 # ---------------------------------------------------------------------------
 
-def test_failure_isolation():
+def test_failure_isolation(tmp_path):
     """
     Rollout 1 -> intentional error
     Rollout 2 -> success (PASSED)
@@ -90,14 +116,14 @@ def test_failure_isolation():
     - Rollout 3 = PASSED
     """
     async def _run():
-        test_store = JobStore()
+        test_store = SQLiteStore(db_path=tmp_path / "test_iso.db")
         raw_tasks = [
             {"id": "task1", "task": "T1", "answer": "A1"},
             {"id": "task2", "task": "T2", "answer": "A2"},
             {"id": "task3", "task": "T3", "answer": "A3"},
         ]
         job, rollouts = create_job(raw_tasks, attempts=1)
-        await test_store.create_job(job, rollouts)
+        test_store.create_job(job, rollouts)
 
         r1, r2, r3 = rollouts
 
@@ -105,7 +131,7 @@ def test_failure_isolation():
         async def mock_execute(rollout_id: str):
             if rollout_id == r1.id:
                 raise RuntimeError("Simulated infrastructure crash for Rollout 1")
-            await test_store.update_rollout(
+            test_store.update_rollout(
                 rollout_id,
                 status=RolloutStatus.PASSED,
                 reward=1.0,
@@ -123,11 +149,11 @@ def test_failure_isolation():
                 except asyncio.CancelledError:
                     break
                 try:
-                    r = await test_store.get_rollout(rid)
+                    r = test_store.get_rollout(rid)
                     if r:
                         await mock_execute(rid)
                 except Exception as exc:
-                    await test_store.update_rollout(
+                    test_store.update_rollout(
                         rid,
                         status=RolloutStatus.ERROR,
                         error_type=ErrorType.ENVIRONMENT_START_ERROR,
@@ -144,16 +170,16 @@ def test_failure_isolation():
             w.cancel()
         await asyncio.gather(*workers, return_exceptions=True)
 
-        updated_job = await test_store.get_job(job.id)
+        updated_job = test_store.get_job(job.id)
         assert updated_job is not None
         assert updated_job.status == JobStatus.COMPLETED
         assert updated_job.passed == 2
         assert updated_job.errors == 1
         assert updated_job.completed == 3
 
-        res_r1 = await test_store.get_rollout(r1.id)
-        res_r2 = await test_store.get_rollout(r2.id)
-        res_r3 = await test_store.get_rollout(r3.id)
+        res_r1 = test_store.get_rollout(r1.id)
+        res_r2 = test_store.get_rollout(r2.id)
+        res_r3 = test_store.get_rollout(r3.id)
 
         assert res_r1.status == RolloutStatus.ERROR
         assert res_r1.error_type == ErrorType.ENVIRONMENT_START_ERROR
@@ -163,26 +189,7 @@ def test_failure_isolation():
     asyncio.run(_run())
 
 
-# ---------------------------------------------------------------------------
-# 3. Parallel Execution Test (Plan Section 26)
-# ---------------------------------------------------------------------------
-
-def test_parallel_execution_mock():
-    """Verify mock worker pool processes all rollouts cleanly in parallel."""
-    async def _run():
-        test_store = JobStore()
-        raw_tasks = [{"id": f"p{i}", "task": f"Task {i}", "answer": f"Ans {i}"} for i in range(5)]
-        job, rollouts = create_job(raw_tasks, attempts=1)
-        await test_store.create_job(job, rollouts)
-
-        await run_job(job, rollouts, test_store, mock=True)
-
-        updated_job = await test_store.get_job(job.id)
-        assert updated_job is not None
-        assert updated_job.status == JobStatus.COMPLETED
-        assert updated_job.completed == 5
-
-    asyncio.run(_run())
+# (Mock execution test removed because mock execution feature was retired)
 
 
 # ---------------------------------------------------------------------------
@@ -255,31 +262,30 @@ def test_fastapi_job_json_payload():
 
 
 # ---------------------------------------------------------------------------
-# 5. JobStore Persistence & Rehydration Tests
+# 5. SQLiteStore Persistence & Rehydration Tests
 # ---------------------------------------------------------------------------
 
 def test_job_store_persistence(tmp_path):
     async def _run():
-        state_file = tmp_path / "test_jobs_state.json"
-        store = JobStore(state_file=state_file)
+        db_path = tmp_path / "test_deeptune.db"
+        store = SQLiteStore(db_path=db_path)
 
         raw_tasks = [
             {"id": "t1", "task": "Task 1", "answer": "Ans 1"},
             {"id": "t2", "task": "Task 2", "answer": "Ans 2"},
         ]
         job, rollouts = create_job(raw_tasks, attempts=1)
-        await store.create_job(job, rollouts)
+        store.create_job(job, rollouts)
 
-        # File should exist after create_job
-        assert state_file.exists()
-        with open(state_file, "r") as f:
-            data = json.load(f)
-        assert job.id in data["jobs"]
-        assert len(data["rollouts"]) == 2
+        # Database file should exist after create_job
+        assert db_path.exists()
+        saved_job = store.get_job(job.id)
+        assert saved_job is not None
+        assert len(store.get_rollouts_for_job(job.id)) == 2
 
         # Update rollout status
         r1 = rollouts[0]
-        await store.update_rollout(
+        store.update_rollout(
             r1.id,
             status=RolloutStatus.PASSED,
             reward=1.0,
@@ -287,26 +293,93 @@ def test_job_store_persistence(tmp_path):
             termination_reason="task_passed",
         )
 
-        # Verify state file update
-        with open(state_file, "r") as f:
-            updated_data = json.load(f)
-        assert updated_data["rollouts"][r1.id]["status"] == "PASSED"
-        assert updated_data["jobs"][job.id]["passed"] == 1
+        # Verify DB update
+        updated_r1 = store.get_rollout(r1.id)
+        assert updated_r1 is not None
+        assert updated_r1.status == RolloutStatus.PASSED
+        updated_job = store.get_job(job.id)
+        assert updated_job is not None
+        assert updated_job.passed == 1
 
-        # Instantiate NEW store and rehydrate
-        new_store = JobStore(state_file=state_file)
-        await new_store.load_from_disk()
+        # Instantiate NEW store and rehydrate from SQLite DB
+        new_store = SQLiteStore(db_path=db_path)
 
-        rehydrated_job = await new_store.get_job(job.id)
+
+        rehydrated_job = new_store.get_job(job.id)
         assert rehydrated_job is not None
         assert rehydrated_job.id == job.id
         assert len(rehydrated_job.tasks) == 2
         assert rehydrated_job.passed == 1
 
-        rehydrated_r1 = await new_store.get_rollout(r1.id)
+        rehydrated_r1 = new_store.get_rollout(r1.id)
         assert rehydrated_r1 is not None
         assert rehydrated_r1.status == RolloutStatus.PASSED
         assert rehydrated_r1.reward == 1.0
 
     asyncio.run(_run())
+
+
+def test_fastapi_job_history_endpoint():
+    client = TestClient(app)
+
+    # Post a job first
+    payload = {
+        "tasks": [
+            {"id": "hist_t1", "task": "Check job history endpoint", "answer": "OK"}
+        ],
+        "attempts": 1,
+    }
+    create_res = client.post("/api/jobs", json=payload)
+    assert create_res.status_code == 201
+
+    # Request history endpoint
+    res = client.get("/api/jobs/history")
+    assert res.status_code == 200
+    data = res.json()
+    assert "summary" in data
+    assert "jobs" in data
+    assert "total_jobs" in data["summary"]
+    assert "overall_pass_rate" in data["summary"]
+    assert data["summary"]["total_jobs"] >= 1
+    assert any(j["id"] == create_res.json()["job_id"] for j in data["jobs"])
+
+    # Test filtering by status
+    res_filtered = client.get("/api/jobs/history?status=QUEUED")
+    assert res_filtered.status_code == 200
+
+    # Test search query
+    res_search = client.get("/api/jobs/history?search=hist_t1")
+    assert res_search.status_code == 200
+    search_data = res_search.json()
+    assert len(search_data["jobs"]) >= 1
+
+
+def test_fastapi_job_tasks_json_artifact():
+    client = TestClient(app)
+
+    payload = {
+        "tasks": [
+            {"id": "json_art_t1", "task": "Check tasks.json artifact storage", "answer": "PASS"}
+        ],
+        "attempts": 1,
+    }
+    create_res = client.post("/api/jobs", json=payload)
+    assert create_res.status_code == 201
+    job_id = create_res.json()["job_id"]
+
+    # Test /api/jobs/{job_id}/tasks.json
+    res_tasks_json = client.get(f"/api/jobs/{job_id}/tasks.json")
+    assert res_tasks_json.status_code == 200
+    tasks_content = res_tasks_json.json()
+    assert len(tasks_content) == 1
+    assert tasks_content[0]["id"] == "json_art_t1"
+
+    # Test /api/artifacts/{job_id}/tasks.json
+    res_artifact = client.get(f"/api/artifacts/{job_id}/tasks.json")
+    assert res_artifact.status_code == 200
+    art_content = res_artifact.json()
+    assert len(art_content) == 1
+    assert art_content[0]["id"] == "json_art_t1"
+
+
 

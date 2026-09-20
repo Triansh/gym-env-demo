@@ -18,6 +18,13 @@ Thumbs.db
 # Evaluation Rollout Runtime & Artifacts
 jobs_state.json
 rollout_artifacts/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
 
 # Metabase data / logs / build artifacts
 metabase/*.db

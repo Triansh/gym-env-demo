@@ -7,7 +7,7 @@ from __future__ import annotations
 import json
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Tuple, Union
 
 from backend.models import Job, JobStatus, Rollout, RolloutStatus, Task
 
@@ -21,9 +21,9 @@ class TaskValidationError(ValueError):
     pass
 
 
-def load_and_validate_tasks(content: bytes, attempts: int) -> List[Dict[str, Any]]:
+def load_and_validate_tasks(content: Union[bytes, List[Dict[str, Any]]], attempts: int) -> List[Dict[str, Any]]:
     """
-    Parse and validate raw tasks.json bytes.
+    Parse and validate raw tasks.json bytes or parsed list of tasks.
 
     Rules:
     - Must be a JSON array.
@@ -39,10 +39,13 @@ def load_and_validate_tasks(content: bytes, attempts: int) -> List[Dict[str, Any
     if attempts < 1:
         raise TaskValidationError("attempts must be >= 1")
 
-    try:
-        tasks = json.loads(content)
-    except json.JSONDecodeError as e:
-        raise TaskValidationError(f"Invalid JSON: {e}") from e
+    if isinstance(content, bytes):
+        try:
+            tasks = json.loads(content)
+        except json.JSONDecodeError as e:
+            raise TaskValidationError(f"Invalid JSON: {e}") from e
+    else:
+        tasks = content
 
     if not isinstance(tasks, list):
         raise TaskValidationError("tasks.json must be a JSON array")
@@ -82,7 +85,11 @@ def load_and_validate_tasks(content: bytes, attempts: int) -> List[Dict[str, Any
 # Factory
 # ---------------------------------------------------------------------------
 
-def create_job(raw_tasks: List[Dict[str, Any]], attempts: int) -> Tuple[Job, List[Rollout]]:
+def create_job(
+    raw_tasks: List[Dict[str, Any]],
+    attempts: int,
+    task_file: str = "tasks.json",
+) -> Tuple[Job, List[Rollout]]:
     """
     Create a Job and all its Rollout objects from validated raw task dicts.
 
@@ -122,6 +129,7 @@ def create_job(raw_tasks: List[Dict[str, Any]], attempts: int) -> Tuple[Job, Lis
         rollout_ids=rollout_ids,
         attempts_per_task=attempts,
         status=JobStatus.QUEUED,
+        task_file=task_file,
         created_at=datetime.utcnow().isoformat(),
         total=len(rollouts),
     )

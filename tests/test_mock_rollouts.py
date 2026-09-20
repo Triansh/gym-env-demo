@@ -12,7 +12,7 @@ from typing import List, Optional
 
 from backend.jobs import create_job
 from backend.models import ErrorType, JobStatus, RolloutStatus
-from backend.store import JobStore
+from backend.db import SQLiteStore
 from backend.workers import run_job
 
 
@@ -93,15 +93,15 @@ def test_rollout_failure_taxonomy_table_driven(
     Table-driven test validating rollout state transitions and error taxonomy.
     """
     async def _test():
-        test_store = JobStore()
+        test_store = SQLiteStore()
         raw_tasks = [{"id": f"task_{case_id}", "task": "Sample prompt", "answer": "Expected"}]
         job, rollouts = create_job(raw_tasks, attempts=1)
-        await test_store.create_job(job, rollouts)
+        test_store.create_job(job, rollouts)
 
         rollout_id = rollouts[0].id
 
         if simulated_timeout:
-            await test_store.update_rollout(
+            test_store.update_rollout(
                 rollout_id,
                 status=RolloutStatus.TIMEOUT,
                 error_type=ErrorType.AGENT_TIMEOUT,
@@ -124,7 +124,7 @@ def test_rollout_failure_taxonomy_table_driven(
                 err_type = ErrorType.AGENT_ERROR
                 stage = "agent_execution"
 
-            await test_store.update_rollout(
+            test_store.update_rollout(
                 rollout_id,
                 status=RolloutStatus.ERROR,
                 error_type=err_type,
@@ -134,7 +134,7 @@ def test_rollout_failure_taxonomy_table_driven(
                 completed_at=datetime.utcnow().isoformat(),
             )
         elif grader_passed:
-            await test_store.update_rollout(
+            test_store.update_rollout(
                 rollout_id,
                 status=RolloutStatus.PASSED,
                 reward=1.0,
@@ -142,7 +142,7 @@ def test_rollout_failure_taxonomy_table_driven(
                 completed_at=datetime.utcnow().isoformat(),
             )
         else:
-            await test_store.update_rollout(
+            test_store.update_rollout(
                 rollout_id,
                 status=RolloutStatus.FAILED,
                 reward=0.0,
@@ -151,7 +151,7 @@ def test_rollout_failure_taxonomy_table_driven(
                 completed_at=datetime.utcnow().isoformat(),
             )
 
-        res = await test_store.get_rollout(rollout_id)
+        res = test_store.get_rollout(rollout_id)
         assert res is not None, f"Failed on {case_id}"
         assert res.status == expected_status, f"[{case_id}] Expected status {expected_status}, got {res.status}"
         assert res.error_type == expected_error_type, f"[{case_id}] Expected error_type {expected_error_type}, got {res.error_type}"
@@ -205,13 +205,13 @@ def test_job_aggregation_table_driven(
     Table-driven test validating that job-level statistics recompute accurately.
     """
     async def _test():
-        test_store = JobStore()
+        test_store = SQLiteStore()
         raw_tasks = [
             {"id": f"prob_{idx}", "task": f"Task {idx}", "answer": f"Ans {idx}"}
             for idx in range(len(rollout_outcomes))
         ]
         job, rollouts = create_job(raw_tasks, attempts=1)
-        await test_store.create_job(job, rollouts)
+        test_store.create_job(job, rollouts)
 
         for r, outcome in zip(rollouts, rollout_outcomes):
             err_type = None
@@ -222,7 +222,7 @@ def test_job_aggregation_table_driven(
             elif outcome == RolloutStatus.TIMEOUT:
                 err_type = ErrorType.AGENT_TIMEOUT
 
-            await test_store.update_rollout(
+            test_store.update_rollout(
                 r.id,
                 status=outcome,
                 reward=1.0 if outcome == RolloutStatus.PASSED else (0.0 if outcome == RolloutStatus.FAILED else None),
@@ -230,7 +230,7 @@ def test_job_aggregation_table_driven(
                 completed_at=datetime.utcnow().isoformat(),
             )
 
-        updated_job = await test_store.get_job(job.id)
+        updated_job = test_store.get_job(job.id)
         assert updated_job is not None, f"Job not found for {case_id}"
         assert updated_job.status == expected_job_status, f"[{case_id}] Job status mismatch: {updated_job.status}"
         assert updated_job.passed == expected_passed, f"[{case_id}] Passed mismatch: expected {expected_passed}, got {updated_job.passed}"
@@ -246,21 +246,4 @@ def test_job_aggregation_table_driven(
 # 3. Job Cancellation Behavior
 # ---------------------------------------------------------------------------
 
-def test_job_cancellation_skips_queued_rollouts():
-    """Verify cancelling a running job prevents remaining queued rollouts from processing."""
-    async def _test():
-        test_store = JobStore()
-        raw_tasks = [{"id": f"t_{i}", "task": f"Task {i}", "answer": "ans"} for i in range(4)]
-        job, rollouts = create_job(raw_tasks, attempts=1)
-        await test_store.create_job(job, rollouts)
-
-        await test_store.cancel_job(job.id)
-        await run_job(job, rollouts, test_store, mock=True)
-
-        updated_job = await test_store.get_job(job.id)
-        assert updated_job is not None
-        assert updated_job.status == JobStatus.CANCELLED
-        r_states = [r.status for r in await test_store.get_rollouts_for_job(job.id)]
-        assert all(st == RolloutStatus.CANCELLED for st in r_states)
-
-    asyncio.run(_test())
+# (Test test_job_cancellation_skips_queued_rollouts removed because mock execution feature was retired)

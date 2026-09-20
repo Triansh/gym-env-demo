@@ -80,9 +80,35 @@ class EnvironmentManager:
             logger.error(f"[{self.project_name}] Failed to verify Metabase state: {e}")
         return False
 
+    def _kill_containers_on_ports(self):
+        """Forcefully remove any Docker containers currently bound to our target host ports."""
+        try:
+            res = subprocess.run(
+                ["docker", "ps", "-a", "--format", "{{.ID}} {{.Ports}} {{.Names}}"],
+                capture_output=True, text=True
+            )
+            if res.returncode == 0:
+                mb_target = f":{self.metabase_port}->"
+                pg_target = f":{self.postgres_port}->"
+                for line in res.stdout.strip().splitlines():
+                    if not line:
+                        continue
+                    parts = line.split(maxsplit=2)
+                    cid = parts[0]
+                    ports = parts[1] if len(parts) > 1 else ""
+                    name = parts[2] if len(parts) > 2 else ""
+
+                    if mb_target in ports or pg_target in ports or name.startswith(f"{self.project_name}_"):
+                        logger.info(f"[{self.project_name}] Force removing conflicting container {cid} ({name}) on ports {ports}")
+                        subprocess.run(["docker", "rm", "-f", cid], capture_output=True, text=True)
+        except Exception as e:
+            logger.warning(f"[{self.project_name}] Error killing conflicting containers: {e}")
+
     def destroy(self):
         """Tear down Docker compose environment and remove all volumes — no data left behind."""
         logger.info(f"[{self.project_name}] Destroying environment...")
+        # Force-remove containers on target host ports or matching project name
+        self._kill_containers_on_ports()
         # Force-remove named containers directly first (fast path)
         subprocess.run(
             ["docker", "rm", "-f",
@@ -91,12 +117,8 @@ class EnvironmentManager:
             capture_output=True, text=True,
         )
         # Compose down with --volumes removes named volumes scoped to this project
-        cmd = self._compose_cmd("down", "-v", "--remove-orphans")
+        cmd = self._compose_cmd("down", "-v", "--remove-orphans", "--timeout", "5")
         subprocess.run(cmd, cwd=str(self.project_dir), capture_output=True, text=True, env=self._compose_env())
-        # Belt-and-suspenders: explicitly remove the named volume docker compose may have scoped
-        # as <project>_pgdata
-        for vol in [f"{self.project_name}_pgdata", "pgdata"]:
-            subprocess.run(["docker", "volume", "rm", "-f", vol], capture_output=True, text=True)
         logger.info(f"[{self.project_name}] Environment destroyed and volumes purged.")
 
     def reset(self, timeout: int = 180):

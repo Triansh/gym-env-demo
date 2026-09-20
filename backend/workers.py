@@ -13,13 +13,13 @@ import logging
 from typing import List
 
 from backend.models import Job, JobStatus, Rollout, RolloutStatus
-from backend.store import JobStore
+from backend.db import SQLiteStore
 from backend.configs import MAX_CONCURRENT_ROLLOUTS
 
 logger = logging.getLogger(__name__)
 
 
-async def _worker(queue: asyncio.Queue, store: JobStore, mock: bool, slot: int) -> None:
+async def _worker(queue: asyncio.Queue, store: SQLiteStore, slot: int) -> None:
     """A single worker that drains rollouts from the queue until exhausted."""
     while True:
         try:
@@ -28,25 +28,21 @@ async def _worker(queue: asyncio.Queue, store: JobStore, mock: bool, slot: int) 
             break
 
         try:
-            rollout = await store.get_rollout(rollout_id)
+            rollout = store.get_rollout(rollout_id)
             if rollout is None:
                 logger.warning(f"Worker[{slot}]: rollout {rollout_id} not found, skipping")
                 continue
 
-            job = await store.get_job(rollout.job_id)
+            job = store.get_job(rollout.job_id)
             if job is not None and (job.status == JobStatus.CANCELLED or job.status == "CANCELLED"):
                 logger.info(f"Worker[{slot}]: rollout {rollout_id} skipped — job cancelled")
                 continue
 
-            if mock:
-                from backend.executor_mock import execute_mock_rollout
-                await execute_mock_rollout(rollout_id, store)
-            else:
-                # execute_rollout is blocking (Playwright + Docker); run in thread pool.
-                # Pass worker slot so the runner assigns a unique port.
-                from backend.rollout.runner import execute_rollout
-                loop = asyncio.get_event_loop()
-                await loop.run_in_executor(None, execute_rollout, rollout_id, store, slot)
+            # execute_rollout is blocking (Playwright + Docker); run in thread pool.
+            # Pass worker slot so the runner assigns a unique port.
+            from backend.rollout.runner import execute_rollout
+            loop = asyncio.get_event_loop()
+            await loop.run_in_executor(None, execute_rollout, rollout_id, store, slot)
 
         except Exception as exc:
             # Exception boundary: one rollout failure must never kill sibling workers.
@@ -54,7 +50,7 @@ async def _worker(queue: asyncio.Queue, store: JobStore, mock: bool, slot: int) 
             try:
                 from datetime import datetime
                 from backend.models import ErrorType
-                await store.update_rollout(
+                store.update_rollout(
                     rollout_id,
                     status=RolloutStatus.ERROR,
                     error_type=ErrorType.AGENT_ERROR,
@@ -69,7 +65,7 @@ async def _worker(queue: asyncio.Queue, store: JobStore, mock: bool, slot: int) 
             queue.task_done()
 
 
-async def run_job(job: Job, rollouts: List[Rollout], store: JobStore, mock: bool = True) -> None:
+async def run_job(job: Job, rollouts: List[Rollout], store: SQLiteStore) -> None:
     """
     Populate the queue with rollout IDs and spin up MAX_CONCURRENT_ROLLOUTS workers.
     Returns after all rollouts have been processed.
@@ -81,7 +77,7 @@ async def run_job(job: Job, rollouts: List[Rollout], store: JobStore, mock: bool
 
     n_workers = min(MAX_CONCURRENT_ROLLOUTS, len(rollouts))
     workers = [
-        asyncio.create_task(_worker(queue, store, mock, slot=i))
+        asyncio.create_task(_worker(queue, store, slot=i))
         for i in range(n_workers)
     ]
 

@@ -32,7 +32,6 @@ if str(ROOT_DIR) not in sys.path:
     sys.path.insert(0, str(ROOT_DIR))
 
 from backend.environment.manager import EnvironmentManager
-from backend.agent.runner import AgentRunner
 from backend.grader.grader import TaskGrader
 from backend.configs import (
     AGENT_TIMEOUT,
@@ -128,30 +127,10 @@ def execute_rollout(rollout_id: str, store, worker_slot: int = 0) -> None:
 
     # ---- helpers to update store from a thread ---------------------------
     def _update(**kwargs):
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-        if loop.is_running():
-            future = asyncio.run_coroutine_threadsafe(
-                store.update_rollout(rollout_id, **kwargs), loop
-            )
-            future.result(timeout=10)
-        else:
-            loop.run_until_complete(store.update_rollout(rollout_id, **kwargs))
+        store.update_rollout(rollout_id, **kwargs)
 
     def _get_rollout():
-        try:
-            loop = asyncio.get_event_loop()
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-        if loop.is_running():
-            future = asyncio.run_coroutine_threadsafe(store.get_rollout(rollout_id), loop)
-            return future.result(timeout=5)
-        else:
-            return loop.run_until_complete(store.get_rollout(rollout_id))
+        return store.get_rollout(rollout_id)
 
     # ---- get rollout metadata --------------------------------------------
     rollout = _get_rollout()
@@ -205,10 +184,12 @@ def execute_rollout(rollout_id: str, store, worker_slot: int = 0) -> None:
         )
 
         # ---- load task --------------------------------------------------
-        grader = TaskGrader(tasks_file=str(DEFAULT_TASKS_FILE))
+        job_task_file = Path(ARTIFACTS_ROOT) / job_id / "tasks.json"
+        tasks_file_path = str(job_task_file) if job_task_file.exists() else str(DEFAULT_TASKS_FILE)
+        grader = TaskGrader(tasks_file=tasks_file_path)
         task_data = grader.get_task(task_id)
         if not task_data:
-            raise RuntimeError(f"Task '{task_id}' not found in tasks.json")
+            raise RuntimeError(f"Task '{task_id}' not found in {tasks_file_path}")
 
         # ---- environment start ------------------------------------------
         env_manager = EnvironmentManager(
@@ -234,6 +215,7 @@ def execute_rollout(rollout_id: str, store, worker_slot: int = 0) -> None:
 
         # ---- agent execution --------------------------------------------
         _update(status=RolloutStatus.RUNNING)
+        from backend.agent.runner import AgentRunner
         agent_runner = AgentRunner(model_name=DEFAULT_MODEL_NAME)
 
         try:
@@ -313,9 +295,24 @@ def execute_rollout(rollout_id: str, store, worker_slot: int = 0) -> None:
             primary_error_type = ErrorType.TASK_FAILED
 
     except Exception as exc:
+        if status not in (RolloutStatus.TIMEOUT, RolloutStatus.ERROR):
+            status = RolloutStatus.ERROR
         if primary_error_type is None:
             primary_error_type = ErrorType.AGENT_ERROR
-            primary_error_stage = "unknown"
+        if not primary_error_stage or primary_error_stage == "unknown":
+            primary_error_stage = "agent_execution"
+        if termination_reason == "unknown":
+            if primary_error_type in (ErrorType.ENVIRONMENT_START_ERROR, ErrorType.ENVIRONMENT_HEALTH_TIMEOUT):
+                termination_reason = "environment_failure"
+            elif primary_error_type in (ErrorType.AGENT_TIMEOUT, ErrorType.ENVIRONMENT_HEALTH_TIMEOUT) or status == RolloutStatus.TIMEOUT:
+                termination_reason = "agent_timeout"
+            elif primary_error_type == ErrorType.AGENT_ERROR:
+                termination_reason = "agent_execution_failed"
+            elif primary_error_type == ErrorType.GRADER_ERROR:
+                termination_reason = "grader_failure"
+            else:
+                termination_reason = "execution_error"
+        if primary_error_message is None:
             primary_error_message = str(exc)
         logger.error(f"[{project_name}] Rollout failed at '{primary_error_stage}': {exc}\n{traceback.format_exc()}")
 
@@ -330,18 +327,21 @@ def execute_rollout(rollout_id: str, store, worker_slot: int = 0) -> None:
                 cleanup_error = str(ce)
                 logger.error(f"[{project_name}] Cleanup error: {ce}")
 
+        status_str = status.value if hasattr(status, "value") else str(status)
+        error_type_str = primary_error_type.value if hasattr(primary_error_type, "value") else (str(primary_error_type) if primary_error_type else None)
+
         result_dict = {
             "rollout_id": rollout_id,
             "job_id": job_id,
             "task_id": task_id,
             "attempt_number": attempt,
-            "status": str(status),
+            "status": status_str,
             "reward": reward,
             "started_at": started_at,
             "completed_at": completed_at,
             "duration_seconds": duration,
             "termination_reason": termination_reason,
-            "error_type": str(primary_error_type) if primary_error_type else None,
+            "error_type": error_type_str,
             "error_message": primary_error_message,
             "error_stage": primary_error_stage,
             "cleanup_error": cleanup_error,
