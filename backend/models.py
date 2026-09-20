@@ -83,34 +83,38 @@ class Rollout:
 
     def to_summary(self) -> Dict[str, Any]:
         """Lightweight representation for list endpoints."""
+        status_val = self.status.value if isinstance(self.status, Enum) else str(self.status)
+        error_val = self.error_type.value if isinstance(self.error_type, Enum) else self.error_type
         return {
             "rollout_id": self.id,
             "job_id": self.job_id,
             "task_id": self.task_id,
             "attempt_number": self.attempt_number,
-            "status": self.status,
+            "status": status_val,
             "reward": self.reward,
             "started_at": self.started_at,
             "completed_at": self.completed_at,
             "duration_seconds": self.duration_seconds,
             "termination_reason": self.termination_reason,
-            "error_type": self.error_type,
+            "error_type": error_val,
         }
 
     def to_dict(self) -> Dict[str, Any]:
-        """Full representation for detail endpoints."""
+        """Full representation for detail endpoints and persistence."""
+        status_val = self.status.value if isinstance(self.status, Enum) else str(self.status)
+        error_val = self.error_type.value if isinstance(self.error_type, Enum) else self.error_type
         return {
             "rollout_id": self.id,
             "job_id": self.job_id,
             "task_id": self.task_id,
             "attempt_number": self.attempt_number,
-            "status": self.status,
+            "status": status_val,
             "reward": self.reward,
             "started_at": self.started_at,
             "completed_at": self.completed_at,
             "duration_seconds": self.duration_seconds,
             "termination_reason": self.termination_reason,
-            "error_type": self.error_type,
+            "error_type": error_val,
             "error_message": self.error_message,
             "error_stage": self.error_stage,
             "cleanup_error": self.cleanup_error,
@@ -120,6 +124,54 @@ class Rollout:
             "screenshots": self.screenshots,
             "agent_claim": self.agent_claim,
         }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> Rollout:
+        """Construct a Rollout instance from a dictionary representation."""
+        raw_status = data.get("status", "QUEUED")
+        status_mapping = {
+            "PASS": RolloutStatus.PASSED,
+            "PASSED": RolloutStatus.PASSED,
+            "FAIL": RolloutStatus.FAILED,
+            "FAILED": RolloutStatus.FAILED,
+        }
+        if raw_status in status_mapping:
+            status = status_mapping[raw_status]
+        else:
+            try:
+                status = RolloutStatus(raw_status)
+            except ValueError:
+                status = RolloutStatus.QUEUED
+
+        raw_error = data.get("error_type")
+        error_type = None
+        if raw_error:
+            try:
+                error_type = ErrorType(raw_error)
+            except ValueError:
+                error_type = None
+
+        return cls(
+            id=data.get("rollout_id") or data.get("id") or str(uuid.uuid4()),
+            job_id=data.get("job_id", ""),
+            task_id=data.get("task_id", ""),
+            attempt_number=data.get("attempt_number", 1),
+            status=status,
+            reward=data.get("reward"),
+            started_at=data.get("started_at"),
+            completed_at=data.get("completed_at") or data.get("finished_at"),
+            duration_seconds=data.get("duration_seconds"),
+            termination_reason=data.get("termination_reason"),
+            error_type=error_type,
+            error_message=data.get("error_message") or data.get("error"),
+            error_stage=data.get("error_stage"),
+            cleanup_error=data.get("cleanup_error"),
+            transcript=data.get("transcript") or [],
+            grader_result=data.get("grader_result") or {},
+            artifact_path=data.get("artifact_path") or data.get("artifacts_dir"),
+            screenshots=data.get("screenshots") or [],
+            agent_claim=data.get("agent_claim", ""),
+        )
 
     @property
     def is_terminal(self) -> bool:
@@ -150,9 +202,10 @@ class Job:
     timeouts: int = 0
 
     def to_dict(self) -> Dict[str, Any]:
+        status_val = self.status.value if isinstance(self.status, Enum) else str(self.status)
         return {
             "job_id": self.id,
-            "status": self.status,
+            "status": status_val,
             "created_at": self.created_at,
             "started_at": self.started_at,
             "completed_at": self.completed_at,
@@ -164,5 +217,54 @@ class Job:
             "errors": self.errors,
             "timeouts": self.timeouts,
             "rollout_ids": self.rollout_ids,
-            "tasks": [{"task_id": t.id, "task": t.prompt} for t in self.tasks],
+            "tasks": [
+                {
+                    "task_id": t.id,
+                    "task": t.prompt,
+                    "expected_answer": t.expected_answer,
+                }
+                for t in self.tasks
+            ],
         }
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> Job:
+        """Construct a Job instance from a dictionary representation."""
+        raw_status = data.get("status", "QUEUED")
+        status_mapping = {
+            "COMPLETE": JobStatus.COMPLETED,
+            "COMPLETED": JobStatus.COMPLETED,
+        }
+        if raw_status in status_mapping:
+            status = status_mapping[raw_status]
+        else:
+            try:
+                status = JobStatus(raw_status)
+            except ValueError:
+                status = JobStatus.QUEUED
+
+        raw_tasks = data.get("tasks", [])
+        tasks = []
+        for t in raw_tasks:
+            t_id = t.get("task_id") or t.get("id") or "task"
+            t_prompt = t.get("task") or t.get("prompt") or ""
+            t_ans = t.get("expected_answer", t.get("answer", ""))
+            tasks.append(Task(id=t_id, prompt=t_prompt, expected_answer=t_ans))
+
+        return cls(
+            id=data.get("job_id") or data.get("id") or str(uuid.uuid4()),
+            tasks=tasks,
+            rollout_ids=data.get("rollout_ids") or [],
+            attempts_per_task=data.get("attempts_per_task", 1),
+            status=status,
+            created_at=data.get("created_at", datetime.utcnow().isoformat()),
+            started_at=data.get("started_at"),
+            completed_at=data.get("completed_at") or data.get("finished_at"),
+            total=data.get("total", data.get("total_rollouts", 0)),
+            completed=data.get("completed", 0),
+            passed=data.get("passed", 0),
+            failed=data.get("failed", 0),
+            errors=data.get("errors", 0),
+            timeouts=data.get("timeouts", 0),
+        )
+

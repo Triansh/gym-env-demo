@@ -1,5 +1,3 @@
-"""Rollout runner package."""
-from .runner import run_rollout
-from .models import RolloutResult
+from .runner import execute_rollout
 
-__all__ = ["run_rollout", "RolloutResult"]
+__all__ = ["execute_rollout"]

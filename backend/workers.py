@@ -12,7 +12,7 @@ import asyncio
 import logging
 from typing import List
 
-from backend.models import Job, Rollout, RolloutStatus
+from backend.models import Job, JobStatus, Rollout, RolloutStatus
 from backend.store import JobStore
 from backend.configs import MAX_CONCURRENT_ROLLOUTS
 
@@ -34,7 +34,7 @@ async def _worker(queue: asyncio.Queue, store: JobStore, mock: bool, slot: int) 
                 continue
 
             job = await store.get_job(rollout.job_id)
-            if job is not None and str(job.status) == "CANCELLED":
+            if job is not None and (job.status == JobStatus.CANCELLED or job.status == "CANCELLED"):
                 logger.info(f"Worker[{slot}]: rollout {rollout_id} skipped — job cancelled")
                 continue
 

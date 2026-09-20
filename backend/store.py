@@ -5,22 +5,82 @@ Thread/asyncio-safe dictionary-backed store for Jobs and Rollouts.
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 from datetime import datetime
-from typing import Dict, List, Optional
+from pathlib import Path
+from typing import Dict, List, Optional, Union
 
+from backend.configs import STATE_FILE
 from backend.models import ErrorType, Job, JobStatus, Rollout, RolloutStatus
 
 logger = logging.getLogger(__name__)
 
 
 class JobStore:
-    """Async-safe in-memory store for Jobs and Rollouts."""
+    """Async-safe in-memory store for Jobs and Rollouts with disk persistence support."""
 
-    def __init__(self):
+    def __init__(self, state_file: Optional[Union[Path, str]] = None):
         self._jobs: Dict[str, Job] = {}
         self._rollouts: Dict[str, Rollout] = {}
         self._lock = asyncio.Lock()
+        self.state_file = Path(state_file) if state_file else STATE_FILE
+
+    # ------------------------------------------------------------------
+    # Persistence operations
+    # ------------------------------------------------------------------
+
+    async def save_to_disk(self, file_path: Optional[Union[Path, str]] = None) -> None:
+        """Save current in-memory jobs and rollouts to JSON file atomically."""
+        async with self._lock:
+            self._save_to_disk_unlocked(file_path)
+
+    def _save_to_disk_unlocked(self, file_path: Optional[Union[Path, str]] = None) -> None:
+        path = Path(file_path) if file_path else self.state_file
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            data = {
+                "jobs": {jid: j.to_dict() for jid, j in self._jobs.items()},
+                "rollouts": {rid: r.to_dict() for rid, r in self._rollouts.items()},
+            }
+            tmp_path = path.with_suffix(".tmp")
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump(data, f, indent=2)
+            tmp_path.replace(path)
+            logger.debug(f"Saved {len(self._jobs)} jobs and {len(self._rollouts)} rollouts to {path}")
+        except Exception as e:
+            logger.error(f"Failed to save job state to disk at {path}: {e}")
+
+    async def load_from_disk(self, file_path: Optional[Union[Path, str]] = None) -> None:
+        """Load jobs and rollouts from JSON file into memory."""
+        path = Path(file_path) if file_path else self.state_file
+        if not path.exists():
+            logger.info(f"State file {path} does not exist. Starting with empty store.")
+            return
+
+        async with self._lock:
+            try:
+                with open(path, "r", encoding="utf-8") as f:
+                    content = f.read().strip()
+                if not content:
+                    return
+                data = json.loads(content)
+                raw_jobs = data.get("jobs", {})
+                raw_rollouts = data.get("rollouts", {})
+
+                loaded_jobs = {}
+                for jid, jdata in raw_jobs.items():
+                    loaded_jobs[jid] = Job.from_dict(jdata)
+
+                loaded_rollouts = {}
+                for rid, rdata in raw_rollouts.items():
+                    loaded_rollouts[rid] = Rollout.from_dict(rdata)
+
+                self._jobs = loaded_jobs
+                self._rollouts = loaded_rollouts
+                logger.info(f"Loaded {len(self._jobs)} jobs and {len(self._rollouts)} rollouts from {path}")
+            except Exception as e:
+                logger.error(f"Failed to load job state from {path}: {e}")
 
     # ------------------------------------------------------------------
     # Job operations
@@ -31,6 +91,7 @@ class JobStore:
             self._jobs[job.id] = job
             for r in rollouts:
                 self._rollouts[r.id] = r
+            self._save_to_disk_unlocked()
 
     async def get_job(self, job_id: str) -> Optional[Job]:
         async with self._lock:
@@ -56,6 +117,7 @@ class JobStore:
                     r.status = RolloutStatus.CANCELLED
                     r.termination_reason = "job_cancelled"
                     r.completed_at = datetime.utcnow().isoformat()
+            self._save_to_disk_unlocked()
             return True
 
     # ------------------------------------------------------------------
@@ -86,6 +148,7 @@ class JobStore:
                 else:
                     logger.warning(f"update_rollout: unknown field '{k}' on Rollout")
             self._recompute_job_progress(rollout.job_id)
+            self._save_to_disk_unlocked()
 
     def _recompute_job_progress(self, job_id: str) -> None:
         """Recompute job progress counters (must be called under lock)."""
@@ -115,3 +178,4 @@ class JobStore:
         elif job.status == JobStatus.QUEUED:
             job.status = JobStatus.RUNNING
             job.started_at = datetime.utcnow().isoformat()
+
