@@ -29,6 +29,9 @@ AGENT_TOP_P = float(os.environ.get("AGENT_TOP_P", "0.95"))
 DEFAULT_METABASE_URL = os.environ.get("METABASE_URL", "http://localhost:3000")
 DEFAULT_DOCKER_COMPOSE_FILE = BACKEND_DIR / "docker-compose.yml"
 DEFAULT_ENV_TIMEOUT = int(os.environ.get("ENV_TIMEOUT", "180"))  # Seconds to wait for Metabase startup
+ENVIRONMENT_START_TIMEOUT = int(os.environ.get("ENVIRONMENT_START_TIMEOUT", "180"))  # Seconds for environment health check
+AGENT_TIMEOUT = int(os.environ.get("AGENT_TIMEOUT", "300"))  # Seconds for single agent execution
+GRADER_TIMEOUT = int(os.environ.get("GRADER_TIMEOUT", "30"))  # Seconds for grader execution
 
 # Benchmark / Rollout Execution Settings
 DEFAULT_TASKS_FILE = Path(os.environ.get("TASKS_FILE", str(BACKEND_DIR / "tasks.json")))
@@ -36,6 +39,7 @@ DEFAULT_ROLLOUT_TIMEOUT = int(os.environ.get("ROLLOUT_TIMEOUT", "300"))  # Secon
 
 # API Server Settings
 MAX_WORKERS = int(os.environ.get("MAX_WORKERS", "4"))
+MAX_CONCURRENT_ROLLOUTS = int(os.environ.get("MAX_CONCURRENT_ROLLOUTS", "3"))  # Bounded parallel rollout workers
 MAX_ATTEMPTS = int(os.environ.get("MAX_ATTEMPTS", "10"))
 MOCK_ROLLOUTS = os.environ.get("MOCK_ROLLOUTS", "1").lower() in ("true", "1")
 
