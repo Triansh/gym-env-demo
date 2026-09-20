@@ -50,6 +50,8 @@ class EnvironmentManager:
     def destroy(self):
         """Tear down Docker compose environment and purge volume state."""
         logger.info("Tearing down Docker environment (purging volumes)...")
+        # Force remove named containers if present to prevent container name conflicts across projects
+        subprocess.run(["docker", "rm", "-f", "metabase_postgres", "metabase_app"], capture_output=True, text=True)
         cmd = ["docker", "compose", "-f", str(self.compose_file), "down", "-v", "--remove-orphans"]
         subprocess.run(cmd, cwd=str(self.project_dir), capture_output=True, text=True)
         logger.info("Docker environment destroyed.")
