@@ -53,6 +53,69 @@ def _port_for_slot(slot: int) -> tuple[int, int]:
     return ROLLOUT_PORT_BASE + slot, ROLLOUT_PORT_BASE + 100 + slot
 
 
+def format_history_steps(history, step_screenshots):
+    """
+    Parses raw agent execution history into a list of structured step objects.
+    Each step matches 1-to-1 with a step screenshot.
+    """
+    steps = []
+    current_step = None
+    step_counter = 0
+
+    for item in history:
+        role = getattr(item, 'role', '')
+        parts = getattr(item, 'parts', [])
+        if isinstance(item, dict):
+            role = item.get('role', '')
+            parts = item.get('parts', [])
+
+        if role == 'model':
+            thought = ""
+            function_calls = []
+
+            for part in parts:
+                p_text = getattr(part, 'text', '') if not isinstance(part, dict) else part.get('text', '')
+                p_fc = getattr(part, 'function_call', None) if not isinstance(part, dict) else part.get('function_call', None)
+
+                if p_text:
+                    thought += str(p_text) + "\n"
+                if p_fc:
+                    if isinstance(p_fc, dict):
+                        fc_name = p_fc.get('name', '')
+                        fc_args = p_fc.get('args', {})
+                    else:
+                        fc_name = getattr(p_fc, 'name', '')
+                        fc_args = getattr(p_fc, 'args', {})
+                        if hasattr(fc_args, 'to_dict'):
+                            fc_args = fc_args.to_dict()
+                        elif not isinstance(fc_args, dict):
+                            fc_args = dict(fc_args) if fc_args else {}
+                    function_calls.append({'name': fc_name, 'args': fc_args})
+
+            for fc in function_calls:
+                step_counter += 1
+                shot_name = f"{step_counter:03d}_{fc['name']}.png" if step_counter <= len(step_screenshots) else None
+                current_step = {
+                    "step_number": step_counter,
+                    "action": fc['name'],
+                    "args": fc['args'],
+                    "thought": thought.strip(),
+                    "url": None,
+                    "screenshot": shot_name
+                }
+                steps.append(current_step)
+
+        elif role == 'user' and current_step is not None:
+            for part in parts:
+                p_fr = getattr(part, 'function_response', None) if not isinstance(part, dict) else part.get('function_response', None)
+                if p_fr:
+                    resp = getattr(p_fr, 'response', {}) if not isinstance(p_fr, dict) else p_fr.get('response', {})
+                    if isinstance(resp, dict) and 'url' in resp:
+                        current_step['url'] = resp['url']
+
+    return steps
+
+
 def execute_rollout(rollout_id: str, store, worker_slot: int = 0) -> None:
     """
     Execute a single rollout end-to-end (blocking — run in asyncio thread executor).
@@ -200,10 +263,6 @@ def execute_rollout(rollout_id: str, store, worker_slot: int = 0) -> None:
         history = agent_out.get("history", [])
         step_screenshots = agent_out.get("screenshots", [])
 
-        with open(artifact_dir / "transcript.json", "w", encoding="utf-8") as f:
-            json.dump(history, f, default=str, indent=2)
-        transcript = history
-
         shot_dir = artifact_dir / "screenshots"
         shot_dir.mkdir(exist_ok=True)
         shot_names = []
@@ -214,6 +273,13 @@ def execute_rollout(rollout_id: str, store, worker_slot: int = 0) -> None:
                     f.write(img_data)
                 shot_names.append(name)
         screenshots = shot_names
+
+        formatted_steps = format_history_steps(history, step_screenshots)
+        transcript_data = formatted_steps if formatted_steps else history
+
+        with open(artifact_dir / "transcript.json", "w", encoding="utf-8") as f:
+            json.dump(transcript_data, f, default=str, indent=2)
+        transcript = transcript_data
 
         # ---- grading ----------------------------------------------------
         _update(status=RolloutStatus.GRADING)
