@@ -1,1 +1,0 @@
-export { DetailedViewSwitch } from "./DetailedViewSwitch";

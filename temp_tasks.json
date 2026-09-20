@@ -1,0 +1,12 @@
+[
+  {
+    "id": "problem1",
+    "task": "Retrieve product titles and ratings for products with ratings above '4.5' and price less than '40'. Return in the format {product_titles: list[str], ratings: list[number]}.",
+    "answer": "{\n  \"ratings\": [\n    4.6,\n    5,\n    5\n  ],\n  \"product_titles\": [\n    \"Rustic Paper Wallet\",\n    \"Ergonomic Wool Bag\",\n    \"Lightweight Linen Hat\"\n  ]\n}"
+  },
+  {
+    "id": "problem2",
+    "task": "List the top 3 product with a rating review of 5 that has the most orders and provide their order counts. Return in the format {product_titles: list[str], order_counts: list[number]}",
+    "answer": "{\n  \"order_counts\": [\n    996,\n    700,\n    664\n  ],\n  \"product_titles\": [\n    \"Fantastic Rubber Knife\",\n    \"Awesome Plastic Watch\",\n    \"Incredible Bronze Wallet\"\n  ]\n}"
+  }
+]

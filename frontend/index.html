@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GymRL Metabase Agent Studio • RL Evaluation Platform</title>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=JetBrains+Mono:wght@100..900&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+@layer base {
+  html, body { margin: 0; padding: 0; }
+  body { overscroll-behavior: none; font-family: 'Inter', 'Geist', sans-serif; }
+}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+</style>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<script id="tailwind-config">
+tailwind.config = {
+  darkMode: "class",
+  theme: {
+    extend: {
+      colors: {
+        "primary": "#000000",
+        "secondary": "#006c4a",
+        "secondary-container": "#82f5c1",
+        "on-secondary-container": "#002114",
+        "surface": "#f8f9ff",
+        "surface-container": "#e5eeff",
+        "surface-container-low": "#eff4ff",
+        "surface-container-lowest": "#ffffff",
+        "surface-container-high": "#dce9ff",
+        "surface-container-highest": "#d3e4fe",
+        "surface-bright": "#f8f9ff",
+        "on-surface": "#131b2e",
+        "on-surface-variant": "#45464d",
+        "outline": "#76777d",
+        "error": "#ba1a1a",
+        "error-container": "#ffdad6",
+        "on-error-container": "#93000a",
+      }
+    }
+  }
+}
+</script>
+</head>
+<body class="bg-surface text-on-surface min-h-screen flex flex-col font-sans">
+
+<!-- ── Navigation Header ── -->
+<header class="w-full bg-surface-container-lowest border-b border-surface-container-high px-6 py-3 flex items-center justify-between shadow-xs sticky top-0 z-50">
+  <div class="flex items-center gap-6">
+    <div class="flex items-center gap-2">
+      <div class="w-7 h-7 rounded bg-primary text-white flex items-center justify-center font-bold text-sm">RL</div>
+      <h1 class="font-bold text-base tracking-tight text-on-surface">GymRL Agent Studio</h1>
+    </div>
+    <nav class="hidden md:flex items-center gap-1">
+      <button id="nav-inspector" onclick="switchView('inspector')" class="px-3 py-1.5 text-xs font-semibold text-primary border-b-2 border-primary transition-all">Inspector</button>
+      <button id="nav-history" onclick="switchView('history')" class="px-3 py-1.5 text-xs font-medium text-on-surface-variant hover:text-on-surface transition-all">Run History</button>
+    </nav>
+  </div>
+  <div class="flex items-center gap-3" id="header-job-info">
+    <span class="text-xs text-outline font-mono" id="job-id-tag">No Active Job</span>
+    <span id="job-status-badge"></span>
+  </div>
+</header>
+
+<!-- ── Main Workbench ── -->
+<main class="flex-1 w-full max-w-[1720px] mx-auto px-6 py-4 flex flex-col gap-4">
+
+  <!-- ── 1. Inspector View Wrapper ── -->
+  <div id="view-inspector" class="flex flex-col gap-4">
+
+    <!-- 1. Job Control & Config Bar -->
+    <section class="w-full bg-surface-container-lowest border border-surface-container-high rounded-lg p-3 shadow-xs">
+      <div class="flex flex-wrap items-center justify-between gap-3">
+        <div class="flex flex-wrap items-center gap-3">
+          <div class="flex items-center gap-1.5 text-xs font-semibold text-on-surface uppercase tracking-wider mr-2">
+            <span class="material-symbols-outlined text-[18px] text-secondary">tune</span>
+            <span>Job Setup</span>
+          </div>
+
+          <!-- Task File Upload Drop Zone -->
+          <label class="flex items-center gap-2 px-3 py-1.5 rounded border border-surface-container-highest bg-surface-container-low/50 hover:bg-surface-container-low transition-colors cursor-pointer">
+            <span class="material-symbols-outlined text-[18px] text-on-surface-variant">upload_file</span>
+            <div class="flex items-baseline gap-1.5">
+              <span class="font-mono text-xs font-medium text-on-surface" id="file-label-text">tasks.json</span>
+              <span class="text-[10px] text-outline" id="file-task-count">10 benchmark tasks</span>
+            </div>
+            <input type="file" id="file-input" accept=".json" class="hidden" onchange="handleFileSelect(this.files[0])">
+          </label>
+
+          <!-- Model Info -->
+          <div class="flex items-center gap-1.5 px-3 py-1.5 rounded border border-surface-container-highest bg-surface-container-lowest">
+            <span class="text-[10px] uppercase text-outline font-medium tracking-wide">Model:</span>
+            <span class="text-xs font-medium text-on-surface">Gemini 3 Flash Preview (Playwright)</span>
+          </div>
+
+          <!-- Attempts Stepper -->
+          <div class="flex items-center gap-2 px-3 py-1.5 rounded border border-surface-container-highest bg-surface-container-lowest">
+            <span class="text-[10px] uppercase text-outline font-medium tracking-wide">Attempts (k):</span>
+            <div class="flex items-center gap-1">
+              <button class="w-5 h-5 flex items-center justify-center rounded bg-surface-container-low hover:bg-surface-container-high text-on-surface font-semibold text-xs" onclick="changeAttempts(-1)">-</button>
+              <span class="font-mono text-xs font-bold text-on-surface px-1.5" id="attempts-val">3</span>
+              <button class="w-5 h-5 flex items-center justify-center rounded bg-surface-container-low hover:bg-surface-container-high text-on-surface font-semibold text-xs" onclick="changeAttempts(1)">+</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Action Controls -->
+        <div class="flex items-center gap-2">
+          <button class="inline-flex items-center gap-1.5 px-4 py-1.5 rounded bg-primary text-white text-xs font-semibold hover:opacity-90 transition-all shadow-xs" id="btn-run" onclick="submitJob()">
+            <span class="material-symbols-outlined text-[16px]">play_arrow</span>
+            <span>Run Rollout Job</span>
+          </button>
+        </div>
+      </div>
+    </section>
+
+    <!-- 3. Split Workbench Grid (Left: Benchmark Tasks, Right: Trajectory & Attempt Inspector) -->
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+
+      <!-- Left Column: Benchmark Tasks List (3 cols - reduced width) -->
+      <div class="lg:col-span-3 bg-surface-container-lowest border border-surface-container-high rounded-lg overflow-hidden shadow-xs flex flex-col max-h-[800px]">
+        <div class="px-4 py-3 border-b border-surface-container-high bg-surface-container-low/30 flex items-center justify-between">
+          <h2 class="text-xs font-bold uppercase tracking-wider text-on-surface">Benchmark Tasks</h2>
+          <span class="text-[11px] font-mono text-outline" id="task-list-count">0 tasks</span>
+        </div>
+        <div class="divide-y divide-surface-container-high overflow-y-auto flex-1" id="task-list-body">
+          <div class="p-6 text-center text-outline text-xs">No benchmark tasks loaded. Upload a tasks JSON file and click 'Run Rollout Job'.</div>
+        </div>
+      </div>
+
+      <!-- Right Column: Attempt & Trajectory Inspector (9 cols - expanded width) -->
+      <div class="lg:col-span-9 bg-surface-container-lowest border border-surface-container-high rounded-lg p-4 shadow-xs flex flex-col gap-4 min-h-[600px]" id="inspector-panel">
+        
+        <!-- Empty State -->
+        <div class="flex flex-col items-center justify-center py-20 text-center text-outline gap-2" id="inspector-empty">
+          <span class="material-symbols-outlined text-[36px] text-surface-container-highest">manage_search</span>
+          <p class="text-xs font-medium">Select a benchmark task from the left list to inspect agent execution trajectories</p>
+        </div>
+
+        <!-- Active Content Drawer -->
+        <div class="hidden flex flex-col gap-4" id="inspector-content">
+          <!-- Selected Task Header -->
+          <div class="border-b border-surface-container-high pb-3">
+            <div class="flex items-center justify-between gap-2 mb-1">
+              <span class="font-mono text-xs font-bold text-primary" id="insp-task-id">task_01</span>
+              <span id="insp-task-status-badge"></span>
+            </div>
+            <p class="text-xs font-medium text-on-surface leading-relaxed" id="insp-task-prompt"></p>
+          </div>
+
+          <!-- Attempts Selector Pills -->
+          <div>
+            <div class="text-[10px] uppercase font-bold text-outline tracking-wider mb-2">Rollout Attempts:</div>
+            <div class="flex flex-wrap gap-2" id="insp-attempts-strip"></div>
+          </div>
+
+          <!-- Active Rollout Inspector -->
+          <div id="insp-rollout-detail" class="flex flex-col gap-4"></div>
+        </div>
+
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- ── 2. Run History View Wrapper ── -->
+  <div id="view-history" class="hidden flex flex-col gap-5">
+    
+    <!-- Title & Top Actions Bar -->
+    <div class="flex flex-wrap items-center justify-between gap-3 bg-surface-container-lowest border border-surface-container-high rounded-lg p-4 shadow-xs">
+      <div>
+        <h2 class="text-sm font-bold text-on-surface flex items-center gap-2">
+          <span class="material-symbols-outlined text-secondary text-[20px]">history</span>
+          <span>Run History & Evaluation Logs</span>
+        </h2>
+        <p class="text-xs text-outline mt-0.5">Historical records of evaluation jobs, pass rate benchmarks, and execution performance metrics.</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button onclick="fetchJobHistory()" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded border border-surface-container-highest bg-surface-container-low hover:bg-surface-container text-xs font-semibold text-on-surface transition-colors">
+          <span class="material-symbols-outlined text-[16px]">refresh</span>
+          <span>Refresh</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- KPI Metrics Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+      
+      <!-- Card 1: Total Jobs -->
+      <div class="bg-surface-container-lowest border border-surface-container-high rounded-lg p-4 shadow-xs flex flex-col gap-1">
+        <div class="flex items-center justify-between text-xs font-semibold text-outline uppercase tracking-wider">
+          <span>Total Evaluation Runs</span>
+          <span class="material-symbols-outlined text-outline text-[18px]">workspaces</span>
+        </div>
+        <div class="flex items-baseline gap-2 mt-1">
+          <span class="text-2xl font-bold font-mono text-on-surface" id="hist-kpi-jobs">0</span>
+          <span class="text-xs text-outline font-medium">all time</span>
+        </div>
+      </div>
+
+      <!-- Card 2: Overall Pass Rate -->
+      <div class="bg-surface-container-lowest border border-surface-container-high rounded-lg p-4 shadow-xs flex flex-col gap-1">
+        <div class="flex items-center justify-between text-xs font-semibold text-outline uppercase tracking-wider">
+          <span>Overall Pass Rate</span>
+          <span class="material-symbols-outlined text-secondary text-[18px]">verified</span>
+        </div>
+        <div class="flex items-baseline gap-2 mt-1">
+          <span class="text-2xl font-bold font-mono text-secondary" id="hist-kpi-passrate">0.0%</span>
+          <span class="text-xs text-outline font-medium" id="hist-kpi-passed-count">0 passed</span>
+        </div>
+      </div>
+
+      <!-- Card 3: Total Rollouts -->
+      <div class="bg-surface-container-lowest border border-surface-container-high rounded-lg p-4 shadow-xs flex flex-col gap-1">
+        <div class="flex items-center justify-between text-xs font-semibold text-outline uppercase tracking-wider">
+          <span>Executed Rollouts</span>
+          <span class="material-symbols-outlined text-outline text-[18px]">reorder</span>
+        </div>
+        <div class="flex items-baseline gap-2 mt-1">
+          <span class="text-2xl font-bold font-mono text-on-surface" id="hist-kpi-rollouts">0</span>
+          <span class="text-xs text-outline font-medium">attempts</span>
+        </div>
+      </div>
+
+      <!-- Card 4: Active Jobs -->
+      <div class="bg-surface-container-lowest border border-surface-container-high rounded-lg p-4 shadow-xs flex flex-col gap-1">
+        <div class="flex items-center justify-between text-xs font-semibold text-outline uppercase tracking-wider">
+          <span>Active Jobs</span>
+          <span class="material-symbols-outlined text-primary text-[18px]">autorenew</span>
+        </div>
+        <div class="flex items-baseline gap-2 mt-1">
+          <span class="text-2xl font-bold font-mono text-primary" id="hist-kpi-active">0</span>
+          <span class="text-xs text-outline font-medium">queued/running</span>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Search & Filter Controls -->
+    <div class="flex flex-wrap items-center justify-between gap-3 bg-surface-container-lowest border border-surface-container-high rounded-lg px-4 py-2.5 shadow-xs">
+      <!-- Status Filters -->
+      <div class="flex items-center gap-1.5 flex-wrap">
+        <span class="text-xs font-semibold text-outline uppercase tracking-wider mr-1">Status:</span>
+        <button class="px-2.5 py-1 rounded bg-primary text-white text-xs font-semibold" id="hist-filter-all" onclick="setHistoryStatus('ALL')">All</button>
+        <button class="px-2.5 py-1 rounded bg-surface-container-low hover:bg-surface-container text-on-surface-variant text-xs font-medium" id="hist-filter-completed" onclick="setHistoryStatus('COMPLETED')">Completed</button>
+        <button class="px-2.5 py-1 rounded bg-surface-container-low hover:bg-surface-container text-on-surface-variant text-xs font-medium" id="hist-filter-running" onclick="setHistoryStatus('RUNNING')">Running</button>
+        <button class="px-2.5 py-1 rounded bg-surface-container-low hover:bg-surface-container text-on-surface-variant text-xs font-medium" id="hist-filter-failed" onclick="setHistoryStatus('FAILED')">Failed</button>
+        <button class="px-2.5 py-1 rounded bg-surface-container-low hover:bg-surface-container text-on-surface-variant text-xs font-medium" id="hist-filter-queued" onclick="setHistoryStatus('QUEUED')">Queued</button>
+      </div>
+
+      <!-- Search Input -->
+      <div class="relative min-w-[240px]">
+        <span class="material-symbols-outlined absolute left-2.5 top-2 text-[16px] text-outline">search</span>
+        <input type="text" placeholder="Search by Job ID or prompt..." class="w-full pl-8 pr-3 py-1 rounded text-xs border border-surface-container-highest bg-surface-container-low focus:bg-white focus:outline-none focus:border-primary text-on-surface font-sans" oninput="onHistorySearch(this.value)">
+      </div>
+    </div>
+
+    <!-- Job History Table -->
+    <div class="bg-surface-container-lowest border border-surface-container-high rounded-lg overflow-hidden shadow-xs">
+      <div class="overflow-x-auto">
+        <table class="w-full text-left border-collapse">
+          <thead>
+            <tr class="bg-surface-container-low border-b border-surface-container-high text-[11px] font-bold uppercase tracking-wider text-outline">
+              <th class="px-4 py-3">Job ID</th>
+              <th class="px-4 py-3">Created At</th>
+              <th class="px-4 py-3">File Used</th>
+              <th class="px-4 py-3">Status</th>
+              <th class="px-4 py-3">Tasks / Rollouts</th>
+              <th class="px-4 py-3">Pass Rate</th>
+              <th class="px-4 py-3">Duration</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-surface-container-high text-xs font-sans" id="history-table-body">
+            <tr>
+              <td colspan="7" class="p-8 text-center text-outline">
+                <span class="material-symbols-outlined text-[28px] animate-spin mb-1">sync</span>
+                <p>Loading run history...</p>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<!-- Footer Bar -->
+<footer class="w-full bg-surface-container-lowest border-t border-surface-container-high py-2.5 px-6 mt-auto">
+  <div class="w-full max-w-[1720px] mx-auto flex items-center justify-between text-[11px] text-outline font-mono">
+    <span>Metabase RL Agent Evaluation Studio • v2.4.0-bench</span>
+    <div class="flex items-center gap-3">
+      <span>Model: Gemini 3 Flash Preview</span>
+      <span>•</span>
+      <span>Policy Latency: 38ms</span>
+    </div>
+  </div>
+</footer>
+
+<!-- Lightbox Modal -->
+<div id="img-modal" class="fixed inset-0 bg-black/80 z-[999] hidden items-center justify-center p-4 backdrop-blur-xs" onclick="closeModal()">
+  <img id="img-modal-target" src="" class="max-w-[90vw] max-h-[90vh] rounded border border-surface-container-high shadow-2xl">
+</div>
+
+<!-- Toast Box -->
+<div id="toast-box" class="fixed bottom-4 right-4 z-[9999] flex flex-col gap-2"></div>
+
+<script>
+const API_BASE = 'http://localhost:8000/api';
+
+const state = {
+  currentJob: null,
+  tasks: [],
+  selectedTaskId: null,
+  selectedRolloutId: null,
+  filter: 'ALL',
+  attempts: 3,
+  taskFile: null,
+  pollingTimer: null,
+  activeView: 'inspector',
+  historyStatusFilter: 'ALL',
+  historySearchQuery: '',
+  searchTimeout: null,
+};
+
+// Navigation View Switching
+function switchView(viewName) {
+  state.activeView = viewName;
+  const inspView = document.getElementById('view-inspector');
+  const histView = document.getElementById('view-history');
+  const navInsp = document.getElementById('nav-inspector');
+  const navHist = document.getElementById('nav-history');
+
+  const activeCls = 'px-3 py-1.5 text-xs font-semibold text-primary border-b-2 border-primary transition-all';
+  const inactiveCls = 'px-3 py-1.5 text-xs font-medium text-on-surface-variant hover:text-on-surface border-b-2 border-transparent transition-all';
+
+  if (viewName === 'history') {
+    if (inspView) inspView.classList.add('hidden');
+    if (histView) histView.classList.remove('hidden');
+
+    if (navInsp) navInsp.className = inactiveCls;
+    if (navHist) navHist.className = activeCls;
+
+    fetchJobHistory();
+  } else {
+    if (histView) histView.classList.add('hidden');
+    if (inspView) inspView.classList.remove('hidden');
+
+    if (navHist) navHist.className = inactiveCls;
+    if (navInsp) navInsp.className = activeCls;
+  }
+}
+
+// History Filters & Search
+function setHistoryStatus(status) {
+  state.historyStatusFilter = status;
+  const buttons = {
+    ALL: 'hist-filter-all',
+    COMPLETED: 'hist-filter-completed',
+    RUNNING: 'hist-filter-running',
+    FAILED: 'hist-filter-failed',
+    QUEUED: 'hist-filter-queued',
+  };
+
+  Object.entries(buttons).forEach(([st, btnId]) => {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    if (st === status) {
+      btn.className = 'px-2.5 py-1 rounded bg-primary text-white text-xs font-semibold';
+    } else {
+      btn.className = 'px-2.5 py-1 rounded bg-surface-container-low hover:bg-surface-container text-on-surface-variant text-xs font-medium';
+    }
+  });
+
+  fetchJobHistory();
+}
+
+function onHistorySearch(val) {
+  state.historySearchQuery = val || '';
+  if (state.searchTimeout) clearTimeout(state.searchTimeout);
+  state.searchTimeout = setTimeout(() => {
+    fetchJobHistory();
+  }, 300);
+}
+
+// Fetch Job History & Populate UI
+async function fetchJobHistory() {
+  const tbody = document.getElementById('history-table-body');
+  if (!tbody) return;
+
+  try {
+    let queryParams = [];
+    if (state.historyStatusFilter && state.historyStatusFilter !== 'ALL') {
+      queryParams.push(`status=${encodeURIComponent(state.historyStatusFilter)}`);
+    }
+    if (state.historySearchQuery.trim()) {
+      queryParams.push(`search=${encodeURIComponent(state.historySearchQuery.trim())}`);
+    }
+
+    const queryStr = queryParams.length ? `?${queryParams.join('&')}` : '';
+    const res = await api(`/jobs/history${queryStr}`);
+    const jobs = res.jobs || [];
+    const summary = res.summary || res.stats || {};
+
+    // Update KPI metrics
+    if (document.getElementById('hist-kpi-jobs')) document.getElementById('hist-kpi-jobs').textContent = summary.total_jobs ?? 0;
+    if (document.getElementById('hist-kpi-passrate')) document.getElementById('hist-kpi-passrate').textContent = `${(summary.overall_pass_rate ?? 0).toFixed(1)}%`;
+    if (document.getElementById('hist-kpi-passed-count')) document.getElementById('hist-kpi-passed-count').textContent = `${summary.total_passed_rollouts ?? 0} passed`;
+    if (document.getElementById('hist-kpi-rollouts')) document.getElementById('hist-kpi-rollouts').textContent = summary.total_rollouts ?? 0;
+    if (document.getElementById('hist-kpi-active')) document.getElementById('hist-kpi-active').textContent = summary.active_jobs_count ?? 0;
+
+    // Render table
+    if (!jobs.length) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="7" class="p-8 text-center text-outline">
+            <span class="material-symbols-outlined text-[28px] mb-1">inbox</span>
+            <p>No job evaluation runs found.</p>
+          </td>
+        </tr>
+      `;
+      return;
+    }
+
+    tbody.innerHTML = jobs.map(j => {
+      const jobId = j.job_id || j.id;
+      const createdStr = j.created_at ? new Date(j.created_at).toLocaleString() : '—';
+      const durationStr = j.duration_seconds ? `${j.duration_seconds.toFixed(1)}s` : '—';
+      const passRatePct = (j.pass_rate ?? 0).toFixed(1);
+      const taskFile = j.task_file || 'tasks.json';
+
+      return `
+        <tr class="hover:bg-surface-container-low/50 transition-colors">
+          <td class="px-4 py-3 font-mono font-bold text-primary">
+            <button onclick="inspectJobFromHistory('${jobId}')" class="hover:underline flex items-center gap-1">
+              <span>#${jobId.substring(0, 8)}</span>
+              <span class="material-symbols-outlined text-[14px]">open_in_new</span>
+            </button>
+          </td>
+          <td class="px-4 py-3 text-on-surface-variant font-mono text-[11px]">${createdStr}</td>
+          <td class="px-4 py-3 text-on-surface-variant font-mono text-[11px]">
+            <span class="inline-flex items-center gap-1 bg-surface-container px-2 py-0.5 rounded text-outline font-sans">
+              <span class="material-symbols-outlined text-[14px]">description</span>
+              <span>${escHtml(taskFile)}</span>
+            </span>
+          </td>
+          <td class="px-4 py-3">${badgeHtml(j.status)}</td>
+          <td class="px-4 py-3 text-on-surface font-mono">
+            <span class="font-bold">${j.tasks_count || j.tasks?.length || 0}</span> tasks 
+            <span class="text-outline text-[11px]">(${j.completed || 0}/${j.total || j.total_rollouts || 0} rollouts)</span>
+          </td>
+          <td class="px-4 py-3 font-mono">
+            <span class="font-bold text-secondary">${passRatePct}%</span>
+            <span class="text-outline text-[11px]">(${j.passed || 0} pass)</span>
+          </td>
+          <td class="px-4 py-3 font-mono text-outline">${durationStr}</td>
+        </tr>
+      `;
+    }).join('');
+  } catch(err) {
+    console.error('Failed to fetch job history:', err);
+    tbody.innerHTML = `
+      <tr>
+        <td colspan="7" class="p-4 bg-error-container text-on-error-container text-center text-xs">
+          Error loading history: ${escHtml(err.message)}
+        </td>
+      </tr>
+    `;
+  }
+}
+
+function getSavedJobId() {
+  return localStorage.getItem('active_job_id');
+}
+function setSavedJobId(jobId) {
+  if (jobId) {
+    localStorage.setItem('active_job_id', jobId);
+  } else {
+    localStorage.removeItem('active_job_id');
+  }
+}
+
+async function inspectJobFromHistory(jobId) {
+  try {
+    const job = await api(`/jobs/${jobId}`);
+    state.currentJob = job;
+    setSavedJobId(jobId);
+    state.selectedTaskId = null;
+    state.selectedRolloutId = null;
+    switchView('inspector');
+    await refreshDashboard();
+    if (state.tasks && state.tasks.length > 0) {
+      await selectTask(state.tasks[0].task_id);
+    }
+  } catch(err) {
+    toast(`Could not load job ${jobId}: ${err.message}`, 'error');
+  }
+}
+
+async function api(path, opts = {}) {
+  const r = await fetch(`${API_BASE}${path}`, opts);
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({ detail: r.statusText }));
+    throw new Error(err.detail || r.statusText);
+  }
+  return r.json();
+}
+
+function changeAttempts(delta) {
+  state.attempts = Math.max(1, Math.min(10, state.attempts + delta));
+  document.getElementById('attempts-val').textContent = state.attempts;
+}
+
+function handleFileSelect(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const arr = JSON.parse(e.target.result);
+      if (!Array.isArray(arr)) throw new Error('File content must be a JSON array');
+      state.taskFile = file;
+      document.getElementById('file-label-text').textContent = file.name;
+      document.getElementById('file-task-count').textContent = `${arr.length} tasks loaded`;
+      toast(`Loaded ${arr.length} benchmark tasks from ${file.name}`, 'info');
+    } catch(err) {
+      toast('Invalid tasks JSON: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+async function submitJob() {
+  const btn = document.getElementById('btn-run');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="material-symbols-outlined animate-spin text-[16px]">sync</span> Starting…';
+
+  try {
+    const fd = new FormData();
+    if (state.taskFile) {
+      fd.append('file', state.taskFile);
+    }
+    fd.append('attempts', state.attempts);
+    const job = await api('/jobs', { method: 'POST', body: fd });
+    const jid = job.job_id || job.id;
+    state.currentJob = job;
+    setSavedJobId(jid);
+    state.selectedTaskId = null;
+    state.selectedRolloutId = null;
+    toast(`Started evaluation job #${jid.substring(0,8)}`, 'success');
+    await refreshDashboard();
+    if (state.tasks && state.tasks.length > 0) {
+      await selectTask(state.tasks[0].task_id);
+    }
+    startPolling();
+  } catch(err) {
+    toast('Job creation failed: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<span class="material-symbols-outlined text-[16px]">play_arrow</span><span>Run Rollout Job</span>';
+  }
+}
+
+async function refreshDashboard() {
+  if (!state.currentJob) return;
+  try {
+    const jid = state.currentJob.job_id || state.currentJob.id;
+    const [job, tasks] = await Promise.all([
+      api(`/jobs/${jid}`),
+      api(`/jobs/${jid}/tasks`),
+    ]);
+    state.currentJob = job;
+    state.tasks = tasks;
+
+    // Render Job Info
+    const renderJid = job.job_id || job.id;
+    document.getElementById('job-id-tag').textContent = `Job #${renderJid.substring(0,8)}`;
+    document.getElementById('job-status-badge').innerHTML = badgeHtml(job.status);
+
+    // Render Stats
+    const total = job.total_rollouts || 1;
+    const done = job.completed || 0;
+    const rate = done > 0 ? ((job.passed || 0) / total * 100).toFixed(1) : '0.0';
+    if (document.getElementById('stat-progress')) document.getElementById('stat-progress').textContent = `${done}/${total}`;
+    if (document.getElementById('stat-rate')) document.getElementById('stat-rate').textContent = `${rate}%`;
+    if (document.getElementById('cnt-all')) document.getElementById('cnt-all').textContent = tasks.length;
+    if (document.getElementById('cnt-pass')) document.getElementById('cnt-pass').textContent = tasks.filter(t => t.passed > 0).length;
+    if (document.getElementById('cnt-fail')) document.getElementById('cnt-fail').textContent = tasks.filter(t => (t.failed + (t.timeouts||0)) > 0).length;
+
+    renderTaskList();
+
+    if (state.selectedTaskId) {
+      const t = tasks.find(x => x.task_id === state.selectedTaskId);
+      if (t) {
+        renderInspector(t);
+        if (state.selectedRolloutId) {
+          await selectRollout(state.selectedRolloutId, true);
+        }
+      }
+    }
+  } catch(err) {
+    console.error('Refresh error:', err);
+  }
+}
+
+function setFilter(f) {
+  state.filter = f;
+  renderTaskList();
+}
+
+function renderTaskList() {
+  const container = document.getElementById('task-list-body');
+  let list = state.tasks;
+  if (state.filter === 'PASS') list = list.filter(t => t.passed > 0);
+  if (state.filter === 'FAIL') list = list.filter(t => (t.failed + (t.timeouts||0)) > 0);
+
+  document.getElementById('task-list-count').textContent = `${list.length} task${list.length!==1?'s':''}`;
+
+  if (!list.length) {
+    container.innerHTML = '<div class="p-6 text-center text-outline text-xs">No benchmark tasks match filter.</div>';
+    return;
+  }
+
+  container.innerHTML = list.map(t => {
+    const isSelected = t.task_id === state.selectedTaskId;
+    const attemptsPills = (t.rollout_ids||[]).map((rid, idx) => {
+      // Small attempt indicator dot/badge
+      return `<span class="px-2 py-0.5 rounded text-[10px] font-mono font-medium ${idx===0?'bg-surface-container-high text-on-surface':'bg-surface-container-low text-outline'}">#${idx+1}</span>`;
+    }).join(' ');
+
+    return `
+      <div class="p-3 hover:bg-surface-container-low/50 transition-colors cursor-pointer ${isSelected?'bg-surface-container-low border-l-4 border-primary':''}" onclick="selectTask('${t.task_id}')">
+        <div class="flex items-center justify-between gap-2 mb-1">
+          <span class="font-mono text-xs font-bold text-primary">${t.task_id}</span>
+          ${badgeHtml(t.status)}
+        </div>
+        <p class="text-xs text-on-surface-variant line-clamp-2 mb-2 font-medium">${escHtml(t.task)}</p>
+        <div class="flex items-center justify-between text-[11px] font-mono">
+          <span class="text-outline">Attempts: ${t.completed}/${t.total}</span>
+          <span class="text-secondary font-bold">${t.passed} passed</span>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function selectTask(taskId) {
+  state.selectedTaskId = taskId;
+  const task = state.tasks.find(t => t.task_id === taskId);
+  renderTaskList();
+  if (task) {
+    renderInspector(task);
+    if (task.rollout_ids?.length) {
+      await selectRollout(task.rollout_ids[0]);
+    }
+  }
+}
+
+function renderAttemptsStrip(task) {
+  const strip = document.getElementById('insp-attempts-strip');
+  if (!strip) return;
+  const rollouts = task.rollouts || (task.rollout_ids || []).map(id => ({id, status: ''}));
+  
+  strip.innerHTML = rollouts.map((r, idx) => {
+    const isSel = r.id === state.selectedRolloutId;
+    let statusText = '';
+    let bgClass = isSel ? 'bg-primary text-white shadow-xs' : 'bg-surface-container-low text-on-surface hover:bg-surface-container-high';
+    
+    if (r.status === 'PASSED' || r.status === 'PASS') {
+      statusText = ' Passed';
+      bgClass = isSel ? 'bg-[#2e7d32] text-white shadow-xs' : 'bg-[#c8e6c9] text-[#1b5e20] hover:brightness-95';
+    } else if (['FAILED', 'FAIL', 'ERROR', 'TIMEOUT'].includes(r.status)) {
+      statusText = ' Failed';
+      bgClass = isSel ? 'bg-[#c62828] text-white shadow-xs' : 'bg-[#ffcdd2] text-[#b71c1c] hover:brightness-95';
+    }
+    
+    return `
+      <button data-rid="${r.id}" class="px-3 py-1 rounded text-xs font-mono font-medium transition-all flex items-center gap-1.5 ${bgClass}" onclick="selectRollout('${r.id}')">
+        <span>#${idx+1}${statusText}</span>
+      </button>
+    `;
+  }).join('');
+}
+
+function renderInspector(task) {
+  document.getElementById('inspector-empty').classList.add('hidden');
+  document.getElementById('inspector-content').classList.remove('hidden');
+
+  document.getElementById('insp-task-id').textContent = task.task_id;
+  document.getElementById('insp-task-status-badge').innerHTML = badgeHtml(task.status);
+  document.getElementById('insp-task-prompt').textContent = task.task;
+
+  renderAttemptsStrip(task);
+}
+
+async function selectRollout(rolloutId, isSilent = false) {
+  state.selectedRolloutId = rolloutId;
+
+  // Immediately highlight selected attempt button for instant UI feedback
+  const task = state.tasks?.find(t => t.task_id === state.selectedTaskId);
+  if (task) renderAttemptsStrip(task);
+
+  const wrap = document.getElementById('insp-rollout-detail');
+  if (!wrap) return;
+  if (!isSilent) {
+    wrap.innerHTML = '<div class="py-8 text-center text-outline text-xs"><span class="material-symbols-outlined animate-spin text-[20px] mb-1">sync</span><p>Loading rollout trajectory…</p></div>';
+  }
+
+  try {
+    const r = await api(`/rollouts/${rolloutId}`);
+    wrap.innerHTML = renderRolloutCard(r);
+  } catch(err) {
+    if (!isSilent) {
+      wrap.innerHTML = `<div class="p-4 bg-error-container text-on-error-container rounded text-xs">Could not load rollout: ${err.message}</div>`;
+    }
+  }
+}
+
+function parseTranscript(r) {
+  const raw = r.transcript || [];
+  const screenshots = r.screenshots || [];
+  let artDir = r.artifact_path || r.artifacts_dir || '';
+  if (artDir.includes('rollout_artifacts/')) {
+    artDir = artDir.split('rollout_artifacts/').pop();
+  }
+  artDir = artDir.replace(/^\/+/, '');
+  const steps = [];
+
+  if (Array.isArray(raw) && raw.length > 0 && typeof raw[0] === 'object' && raw[0].step_number !== undefined) {
+    return raw.map(s => {
+      let shotUrl = null;
+      if (s.screenshot) {
+        shotUrl = s.screenshot.startsWith('http') ? s.screenshot : `${API_BASE}/artifacts/${artDir}/screenshots/${s.screenshot}`;
+      } else if (s.step_number <= screenshots.length) {
+        const shotName = screenshots[s.step_number - 1];
+        shotUrl = shotName.startsWith('http') ? shotName : `${API_BASE}/artifacts/${artDir}/screenshots/${shotName}`;
+      }
+      return {
+        step_number: s.step_number,
+        action: s.action || 'action',
+        args: s.args || {},
+        thought: s.thought || '',
+        url: s.url || '',
+        screenshotUrl: shotUrl
+      };
+    });
+  }
+
+  let stepCounter = 0;
+  raw.forEach(ev => {
+    if (typeof ev === 'object' && ev.action) {
+      stepCounter++;
+      const shotName = stepCounter <= screenshots.length ? screenshots[stepCounter - 1] : null;
+      steps.push({
+        step_number: stepCounter,
+        action: ev.action,
+        args: ev.args || { target: ev.target, text: ev.text },
+        thought: ev.thought || '',
+        url: ev.url || '',
+        screenshotUrl: shotName ? `${API_BASE}/artifacts/${artDir}/screenshots/${shotName}` : null
+      });
+    } else if (typeof ev === 'string' && ev.includes('action=')) {
+      stepCounter++;
+      const shotName = stepCounter <= screenshots.length ? screenshots[stepCounter - 1] : null;
+      steps.push({
+        step_number: stepCounter,
+        action: 'action',
+        args: { detail: ev },
+        thought: '',
+        url: '',
+        screenshotUrl: shotName ? `${API_BASE}/artifacts/${artDir}/screenshots/${shotName}` : null
+      });
+    }
+  });
+
+  return steps;
+}
+
+function highlightStep(stepNum) {
+  // Deprecated UI function kept for safety
+}
+
+function changeSlide(delta, total) {
+  if (!state.currentSlide) state.currentSlide = 1;
+  let next = state.currentSlide + delta;
+  if (next < 1) next = 1;
+  if (next > total) next = total;
+  state.currentSlide = next;
+  
+  for(let i=1; i<=total; i++) {
+      const slide = document.getElementById('slide-' + i);
+      if(slide) {
+         if (i === next) {
+             slide.classList.remove('hidden');
+             slide.classList.add('flex');
+         } else {
+             slide.classList.add('hidden');
+             slide.classList.remove('flex');
+         }
+      }
+  }
+  
+  const counter = document.getElementById('slide-counter');
+  if(counter) counter.innerText = next + ' / ' + total;
+  
+  const prevBtn = document.getElementById('slide-prev');
+  if(prevBtn) {
+      prevBtn.disabled = next === 1;
+      prevBtn.className = next === 1 ? 'px-3 py-1 rounded bg-surface-container-high text-outline cursor-not-allowed text-xs font-semibold flex items-center justify-center' : 'px-3 py-1 rounded bg-primary text-white hover:opacity-90 transition-all text-xs font-semibold shadow-xs flex items-center justify-center';
+  }
+  
+  const nextBtn = document.getElementById('slide-next');
+  if(nextBtn) {
+      nextBtn.disabled = next === total;
+      nextBtn.className = next === total ? 'px-3 py-1 rounded bg-surface-container-high text-outline cursor-not-allowed text-xs font-semibold flex items-center justify-center' : 'px-3 py-1 rounded bg-primary text-white hover:opacity-90 transition-all text-xs font-semibold shadow-xs flex items-center justify-center';
+  }
+}
+
+function renderRolloutCard(r) {
+  const statusStr = (r.status || 'QUEUED').toUpperCase();
+  const isTerminal = ['PASSED', 'PASS', 'FAILED', 'FAIL', 'ERROR', 'TIMEOUT', 'CANCELLED'].includes(statusStr);
+  const isPass = statusStr === 'PASS' || statusStr === 'PASSED' || r.passed === true;
+  const isQueued = statusStr === 'QUEUED';
+  const isRunning = statusStr === 'STARTING' || statusStr === 'RUNNING';
+  const isGrading = statusStr === 'GRADING';
+
+  const steps = parseTranscript(r);
+  
+  if (!state.currentSlide || state.currentSlide < 1 || state.currentSlide > steps.length) {
+    state.currentSlide = 1;
+  }
+  
+  if (state.lastRenderedRolloutId !== (r.id || (r.job_id + '_' + r.attempt_number))) {
+    state.currentSlide = 1;
+    state.lastRenderedRolloutId = r.id || (r.job_id + '_' + r.attempt_number);
+  }
+  
+  const activeIdx = steps.length > 0 ? state.currentSlide - 1 : 0;
+
+  // Status Summary Banner
+  let bannerHtml = '';
+  if (isQueued) {
+    bannerHtml = `
+      <div class="p-3.5 rounded-lg border border-blue-200 bg-blue-50/60 flex flex-col gap-2 shadow-xs">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>
+            <span class="font-mono text-xs font-bold text-blue-900">ROLLOUT QUEUED</span>
+          </div>
+          <span class="font-mono text-xs text-blue-700 font-medium">Attempt #${r.attempt_number || 1}</span>
+        </div>
+        <p class="text-xs font-medium text-blue-950 leading-relaxed">
+          This rollout attempt is currently queued and waiting for worker allocation. Trajectory data will update automatically once execution starts.
+        </p>
+      </div>
+    `;
+  } else if (isRunning) {
+    bannerHtml = `
+      <div class="p-3.5 rounded-lg border border-amber-300 bg-amber-50/70 flex flex-col gap-2 shadow-xs">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-amber-500 animate-ping"></span>
+            <span class="font-mono text-xs font-bold text-amber-900">ROLLOUT IN PROGRESS (${statusStr})</span>
+          </div>
+          <span class="font-mono text-xs text-amber-800 font-medium">Attempt #${r.attempt_number || 1} • Duration: <strong>${r.duration_seconds ? r.duration_seconds.toFixed(1) + 's' : 'In progress'}</strong></span>
+        </div>
+        <p class="text-xs font-medium text-amber-950 leading-relaxed">
+          Agent is actively executing benchmark steps against the environment. Results will appear when agent execution completes.
+        </p>
+      </div>
+    `;
+  } else if (isGrading) {
+    bannerHtml = `
+      <div class="p-3.5 rounded-lg border border-purple-300 bg-purple-50/70 flex flex-col gap-2 shadow-xs">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-purple-600 animate-pulse"></span>
+            <span class="font-mono text-xs font-bold text-purple-900">EVALUATION IN PROGRESS (GRADING)</span>
+          </div>
+          <span class="font-mono text-xs text-purple-800 font-medium">Attempt #${r.attempt_number || 1}</span>
+        </div>
+        <p class="text-xs font-medium text-purple-950 leading-relaxed">
+          Agent finished trajectory execution. Grader is evaluating predicted output against ground truth.
+        </p>
+      </div>
+    `;
+  } else {
+    bannerHtml = `
+      <div class="p-3.5 rounded-lg border ${isPass?'border-emerald-300 bg-emerald-50/70':'border-rose-300 bg-rose-50/70'} flex flex-col md:flex-row md:items-center justify-between gap-3 shadow-xs">
+        <div class="flex flex-wrap items-center gap-2">
+          <span class="w-2.5 h-2.5 rounded-full ${isPass?'bg-emerald-600':'bg-rose-600'} shrink-0"></span>
+          <span class="font-mono text-xs font-bold ${isPass?'text-emerald-800':'text-rose-800'} shrink-0">${isPass?'EVALUATION PASSED':'EVALUATION FAILED'}</span>
+          <span class="text-xs italic ${isPass?'text-emerald-900/80':'text-rose-900/80'} break-words mt-0.5">(${escHtml(r.grader_result?.reason || r.termination_reason || (isPass ? 'Task completed successfully.' : 'Task failed evaluation.'))})</span>
+        </div>
+        <span class="font-mono text-xs text-slate-600 font-medium shrink-0">Reward: <strong>${r.reward ?? '0.0'}</strong> • Duration: <strong>${r.duration_seconds ? r.duration_seconds.toFixed(1) + 's' : '—'}</strong></span>
+      </div>
+    `;
+  }
+
+  const hasGraderResult = isTerminal && r.grader_result && typeof r.grader_result === 'object' && Object.keys(r.grader_result).length > 0;
+  const graderHtml = hasGraderResult ? `
+    <div class="p-3.5 rounded-lg bg-slate-50 border border-slate-200 flex flex-col gap-2.5 shadow-xs">
+      <span class="text-[11px] uppercase font-bold text-slate-600 tracking-wider flex items-center gap-1.5">
+        <span class="material-symbols-outlined text-[16px] text-emerald-600">verified</span>
+        Grader Evaluation (Ground Truth vs Predicted)
+      </span>
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px] font-mono">
+        <div class="p-2.5 rounded-md bg-white border border-slate-200 overflow-hidden flex flex-col">
+          <div class="text-emerald-700 font-bold mb-1 flex items-center gap-1 shrink-0">
+            <span class="material-symbols-outlined text-[14px]">output</span> Predicted Output:
+          </div>
+          <pre class="text-slate-800 overflow-auto text-[10px] leading-relaxed whitespace-pre-wrap flex-1 min-h-0">${escHtml(JSON.stringify(r.grader_result.predicted, null, 2))}</pre>
+        </div>
+        <div class="p-2.5 rounded-md bg-white border border-slate-200 overflow-hidden flex flex-col">
+          <div class="text-blue-700 font-bold mb-1 flex items-center gap-1 shrink-0">
+            <span class="material-symbols-outlined text-[14px]">fact_check</span> Ground Truth:
+          </div>
+          <pre class="text-slate-800 overflow-auto text-[10px] leading-relaxed whitespace-pre-wrap flex-1 min-h-0">${escHtml(JSON.stringify(r.grader_result.ground_truth, null, 2))}</pre>
+        </div>
+      </div>
+    </div>
+  ` : '';
+
+  let slideshowHtml = '';
+  if (steps.length > 0) {
+     const total = steps.length;
+     const current = state.currentSlide;
+     
+     slideshowHtml = `
+      <div class="flex flex-col gap-2 relative bg-surface-container-lowest border border-surface-container-high rounded-lg shadow-xs overflow-hidden">
+        
+        <div class="flex items-center justify-between border-b border-surface-container-high px-4 py-3 bg-slate-50/50">
+          <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
+            <span class="material-symbols-outlined text-[16px] text-blue-600">slideshow</span>
+            Agent Trajectory (${total} steps)
+          </span>
+          <div class="flex items-center gap-4">
+             <span id="slide-counter" class="text-xs font-mono font-medium text-slate-600 bg-white px-2 py-0.5 rounded border border-surface-container-highest shadow-2xs">${current} / ${total}</span>
+             <div class="flex items-center gap-2">
+               <button id="slide-prev" class="px-3 py-1 rounded 
+                 ${current === 1 ? 'bg-surface-container-high text-outline cursor-not-allowed' : 'bg-primary text-white hover:opacity-90 transition-all shadow-xs'}
+                  text-xs font-semibold flex items-center justify-center" 
+                  ${current === 1 ? 'disabled' : ''} 
+                  onclick="changeSlide(-1, ${total})">
+                  <span class="material-symbols-outlined text-[16px] mr-1">chevron_left</span>Prev
+               </button>
+               <button id="slide-next" class="px-3 py-1 rounded 
+                 ${current === total ? 'bg-surface-container-high text-outline cursor-not-allowed' : 'bg-primary text-white hover:opacity-90 transition-all shadow-xs'}
+                  text-xs font-semibold flex items-center justify-center" 
+                  ${current === total ? 'disabled' : ''} 
+                  onclick="changeSlide(1, ${total})">
+                  Next<span class="material-symbols-outlined text-[16px] ml-1">chevron_right</span>
+               </button>
+             </div>
+          </div>
+        </div>
+        
+        <div id="slides-container" class="w-full p-4">
+          ${steps.map((s, idx) => `
+            <div id="slide-${idx+1}" class="${idx === activeIdx ? 'flex' : 'hidden'} flex-col md:flex-row gap-4 items-stretch lg:h-[400px]">
+                
+                <div class="w-full md:w-1/2 border border-surface-container-high rounded-md bg-slate-100 flex items-center justify-center group overflow-hidden relative shadow-inner min-h-[300px]">
+                   ${s.screenshotUrl 
+                     ? `<img src="${s.screenshotUrl}" class="max-w-full max-h-full object-contain cursor-pointer transition-transform duration-300 hover:scale-[1.02]" onclick="openModal('${s.screenshotUrl}')">` 
+                     : `<div class="flex flex-col items-center gap-2 text-slate-400 font-mono text-xs"><span class="material-symbols-outlined text-[32px] opacity-50">image_not_supported</span>No Image</div>`}
+                   <span class="absolute top-3 left-3 px-2 py-1 rounded-sm bg-blue-600/90 backdrop-blur-sm text-white font-mono text-[10px] font-bold shadow-sm border border-blue-500/50">Step ${s.step_number}</span>
+                </div>
+                
+                <div class="w-full md:w-1/2 flex flex-col gap-3 h-full shrink-0">
+                   
+                   <div class="p-3 rounded-md bg-white border border-surface-container-high shadow-xs flex flex-col gap-2 shrink-0">
+                      <div class="flex items-center justify-between">
+                        <span class="px-2 py-0.5 rounded-sm bg-blue-50 text-blue-700 font-mono text-[11px] font-bold border border-blue-200 uppercase tracking-wide truncate max-w-full" title="${escHtml(s.action)}">${escHtml(s.action)}</span>
+                      </div>
+                      ${s.url ? `<a href="${escHtml(s.url)}" target="_blank" class="text-[10px] font-mono text-blue-500 hover:underline truncate w-full inline-block" title="${escHtml(s.url)}">
+                         <span class="material-symbols-outlined text-[12px] align-middle mr-0.5">link</span>${escHtml(s.url)}
+                      </a>` : ''}
+                   </div>
+
+                   ${s.thought ? `
+                   <div class="p-3.5 rounded-md bg-amber-50/50 border border-amber-200/60 text-[11px] text-slate-700 leading-relaxed font-sans italic flex flex-col shadow-inner overflow-hidden shrink min-h-0">
+                     <span class="font-bold text-amber-800/70 non-italic uppercase text-[10px] tracking-wider block mb-1.5 shrink-0 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">psychology</span>Agent Reasoning
+                     </span>
+                     <div class="overflow-y-auto pr-1 flex-1 text-amber-950/80">
+                        ${escHtml(s.thought)}
+                     </div>
+                   </div>
+                   ` : ''}
+
+                   <div class="p-3.5 rounded-md bg-slate-900 border border-slate-700 text-[11px] text-emerald-400 font-mono flex flex-col shadow-inner overflow-hidden flex-1 min-h-[100px]">
+                      <span class="font-bold text-slate-500 uppercase text-[10px] tracking-wider block mb-1.5 shrink-0 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[14px]">terminal</span>Action Data
+                      </span>
+                      <div class="overflow-y-auto pr-1 flex-1 whitespace-pre-wrap break-all"><span class="text-slate-500 select-none mr-1">$</span>${escHtml(s.action)}(${escHtml(JSON.stringify(s.args, null, 2))})</div>
+                   </div>
+
+                </div>
+            </div>
+          `).join('')}
+        </div>
+        
+      </div>
+     `;
+  } else {
+     slideshowHtml = `<div class="text-xs text-outline font-mono p-6 bg-surface-container-lowest border border-surface-container-high text-center shadow-xs rounded-lg">${!isTerminal ? 'No steps recorded yet.' : 'No step events recorded in trajectory.'}</div>`;
+  }
+
+  return `
+    <div class="flex flex-col gap-4">
+      ${bannerHtml}
+      ${slideshowHtml}
+      ${graderHtml}
+    </div>
+  `;
+}
+
+async function init() {
+  const savedJobId = getSavedJobId();
+  if (savedJobId) {
+    state.currentJob = { job_id: savedJobId };
+    await refreshDashboard(false);
+    startPolling();
+  } else {
+    // Main inspector page starts clean and empty until a job is explicitly submitted or inspected from Run History
+    document.getElementById('job-id-tag').textContent = 'Job #—';
+    document.getElementById('job-status-badge').innerHTML = '';
+    document.getElementById('stat-progress').textContent = '0/0';
+    document.getElementById('stat-rate').textContent = '0.0%';
+    document.getElementById('cnt-all').textContent = '0';
+    document.getElementById('cnt-pass').textContent = '0';
+    document.getElementById('cnt-fail').textContent = '0';
+    document.getElementById('task-list-body').innerHTML = '<div class="p-6 text-center text-outline text-xs">No benchmark tasks loaded. Upload a tasks JSON file and click \'Run Rollout Job\'.</div>';
+    document.getElementById('inspector-empty').classList.remove('hidden');
+    document.getElementById('inspector-content').classList.add('hidden');
+  }
+}
+
+document.addEventListener('DOMContentLoaded', init);
+
+function startPolling() {
+  stopPolling();
+  state.pollingTimer = setInterval(async () => {
+    await refreshDashboard(true);
+    if (['COMPLETE','COMPLETED','FAILED','CANCELLED'].includes(state.currentJob?.status)) stopPolling();
+  }, 10000);
+}
+function stopPolling() {
+  if (state.pollingTimer) { clearInterval(state.pollingTimer); state.pollingTimer = null; }
+}
+
+async function cancelJob() {
+  if (!state.currentJob) return;
+  if (!confirm('Cancel active rollout job?')) return;
+  try {
+    const jid = state.currentJob.job_id || state.currentJob.id;
+    await api(`/jobs/${jid}`, { method: 'DELETE' });
+    toast('Job cancellation requested.', 'info');
+    await refreshDashboard();
+  } catch(err) {
+    toast('Cancel failed: ' + err.message, 'error');
+  }
+}
+
+function badgeHtml(s) {
+  const isRunning = s === 'RUNNING' || s === 'STARTING' || s === 'GRADING';
+  const colors = {
+    PASS: 'bg-secondary-container text-on-secondary-container border-secondary/30',
+    PASSED: 'bg-secondary-container text-on-secondary-container border-secondary/30',
+    COMPLETE: 'bg-secondary-container text-on-secondary-container border-secondary/30',
+    COMPLETED: 'bg-secondary-container text-on-secondary-container border-secondary/30',
+    SUCCEEDED: 'bg-secondary-container text-on-secondary-container border-secondary/30',
+    FAIL: 'bg-error-container text-on-error-container border-error/30',
+    FAILED: 'bg-error-container text-on-error-container border-error/30',
+    ERROR: 'bg-error-container text-on-error-container border-error/30',
+    TIMEOUT: 'bg-error-container text-on-error-container border-error/30',
+    RUNNING: 'bg-surface-container-highest text-primary border-primary/30',
+    STARTING: 'bg-surface-container-highest text-primary border-primary/30',
+    GRADING: 'bg-purple-100 text-purple-800 border-purple-300',
+    QUEUED: 'bg-surface-container-low text-outline border-surface-container-high'
+  };
+  const cls = colors[s] || colors.QUEUED;
+  return `<span class="px-2 py-0.5 rounded text-[10px] font-mono font-bold tracking-wider uppercase border ${cls}">${isRunning?'<span class="animate-pulse mr-1">•</span>':''}${s}</span>`;
+}
+
+function openModal(src) {
+  document.getElementById('img-modal-target').src = src;
+  document.getElementById('img-modal').classList.remove('hidden');
+  document.getElementById('img-modal').classList.add('flex');
+}
+function closeModal() {
+  document.getElementById('img-modal').classList.add('hidden');
+  document.getElementById('img-modal').classList.remove('flex');
+}
+
+function toast(msg, type = 'info') {
+  const box = document.getElementById('toast-box');
+  const el = document.createElement('div');
+  el.className = `px-3 py-2 rounded text-xs font-medium shadow-lg transition-all ${type==='error'?'bg-error text-white':type==='success'?'bg-secondary text-white':'bg-primary text-white'}`;
+  el.textContent = msg;
+  box.appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+function escHtml(str) {
+  if (!str) return '';
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+</script>
+</body>
+</html>
+

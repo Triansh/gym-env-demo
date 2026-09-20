@@ -1,0 +1,6 @@
+[submodule "metabase"]
+	path = metabase
+	url = https://github.com/metabase/metabase.git
+[submodule "computer-use-preview"]
+	path = computer-use-preview
+	url = https://github.com/google-gemini/computer-use-preview.git

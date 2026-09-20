@@ -1,1 +1,0 @@
-export { NewExplorationData } from "./NewExplorationData";

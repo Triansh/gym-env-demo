@@ -1,1 +1,0 @@
-export { CollectionBadge } from "./CollectionBadge";
