@@ -1,7 +1,10 @@
 """
-Milestone 2 Bounded Async Worker Pool.
+Bounded Async Worker Pool.
 Dispatches rollouts from an asyncio.Queue using MAX_CONCURRENT_ROLLOUTS workers.
 Each rollout runs in its own exception boundary — one failure never kills other workers.
+
+Worker slot (0-based index) is passed to the real executor so each rollout
+gets a unique Metabase port (ROLLOUT_PORT_BASE + slot) — no port conflicts.
 """
 from __future__ import annotations
 
@@ -16,7 +19,7 @@ from backend.configs import MAX_CONCURRENT_ROLLOUTS
 logger = logging.getLogger(__name__)
 
 
-async def _worker(queue: asyncio.Queue, store: JobStore, mock: bool) -> None:
+async def _worker(queue: asyncio.Queue, store: JobStore, mock: bool, slot: int) -> None:
     """A single worker that drains rollouts from the queue until exhausted."""
     while True:
         try:
@@ -27,27 +30,27 @@ async def _worker(queue: asyncio.Queue, store: JobStore, mock: bool) -> None:
         try:
             rollout = await store.get_rollout(rollout_id)
             if rollout is None:
-                logger.warning(f"Worker: rollout {rollout_id} not found in store, skipping")
+                logger.warning(f"Worker[{slot}]: rollout {rollout_id} not found, skipping")
                 continue
 
-            # Check if job was cancelled before we even start
             job = await store.get_job(rollout.job_id)
             if job is not None and str(job.status) == "CANCELLED":
-                logger.info(f"Rollout {rollout_id} skipped — job cancelled")
+                logger.info(f"Worker[{slot}]: rollout {rollout_id} skipped — job cancelled")
                 continue
 
             if mock:
                 from backend.executor_mock import execute_mock_rollout
                 await execute_mock_rollout(rollout_id, store)
             else:
-                from backend.executor_real import execute_rollout
-                # execute_rollout is synchronous (runs blocking agent); run in thread pool
+                # execute_rollout is blocking (Playwright + Docker); run in thread pool.
+                # Pass worker slot so the runner assigns a unique port.
+                from backend.rollout.runner import execute_rollout
                 loop = asyncio.get_event_loop()
-                await loop.run_in_executor(None, execute_rollout, rollout_id, store)
+                await loop.run_in_executor(None, execute_rollout, rollout_id, store, slot)
 
         except Exception as exc:
-            # Exception boundary: mark the rollout as ERROR, never propagate
-            logger.error(f"Worker: unhandled exception for rollout {rollout_id}: {exc}", exc_info=True)
+            # Exception boundary: one rollout failure must never kill sibling workers.
+            logger.error(f"Worker[{slot}]: unhandled exception for rollout {rollout_id}: {exc}", exc_info=True)
             try:
                 from datetime import datetime
                 from backend.models import ErrorType
@@ -61,7 +64,7 @@ async def _worker(queue: asyncio.Queue, store: JobStore, mock: bool) -> None:
                     termination_reason="worker_exception",
                 )
             except Exception as store_exc:
-                logger.error(f"Worker: could not update rollout {rollout_id} after exception: {store_exc}")
+                logger.error(f"Worker[{slot}]: could not update rollout after exception: {store_exc}")
         finally:
             queue.task_done()
 
@@ -73,21 +76,19 @@ async def run_job(job: Job, rollouts: List[Rollout], store: JobStore, mock: bool
     Runs as an asyncio background task.
     """
     queue: asyncio.Queue = asyncio.Queue()
-
     for rollout in rollouts:
         await queue.put(rollout.id)
 
+    n_workers = min(MAX_CONCURRENT_ROLLOUTS, len(rollouts))
     workers = [
-        asyncio.create_task(_worker(queue, store, mock))
-        for _ in range(min(MAX_CONCURRENT_ROLLOUTS, len(rollouts)))
+        asyncio.create_task(_worker(queue, store, mock, slot=i))
+        for i in range(n_workers)
     ]
 
-    # Wait for queue to drain
     await queue.join()
 
-    # Cancel idle workers
     for w in workers:
         w.cancel()
     await asyncio.gather(*workers, return_exceptions=True)
 
-    logger.info(f"Job {job.id} finished — all rollouts processed")
+    logger.info(f"Job {job.id} finished — all {len(rollouts)} rollouts processed")

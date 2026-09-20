@@ -40,6 +40,7 @@ DEFAULT_ROLLOUT_TIMEOUT = int(os.environ.get("ROLLOUT_TIMEOUT", "300"))  # Secon
 # API Server Settings
 MAX_WORKERS = int(os.environ.get("MAX_WORKERS", "4"))
 MAX_CONCURRENT_ROLLOUTS = int(os.environ.get("MAX_CONCURRENT_ROLLOUTS", "3"))  # Bounded parallel rollout workers
+ROLLOUT_PORT_BASE = int(os.environ.get("ROLLOUT_PORT_BASE", "3100"))  # Base port for Metabase; each rollout gets BASE+slot
 MAX_ATTEMPTS = int(os.environ.get("MAX_ATTEMPTS", "10"))
 MOCK_ROLLOUTS = os.environ.get("MOCK_ROLLOUTS", "1").lower() in ("true", "1")
 
