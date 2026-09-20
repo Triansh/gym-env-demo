@@ -1,0 +1,834 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Metabase · Computer-Use Evaluation</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d0f14; --bg2: #13161d; --bg3: #1a1e28; --bg4: #222736;
+  --border: #2a3044; --border2: #343d54;
+  --text: #e2e8f0; --text2: #94a3b8; --text3: #64748b;
+  --blue: #4f8ef7; --blue-dim: #2563eb22;
+  --green: #22c55e; --green-dim: #16a34a22;
+  --red: #ef4444; --red-dim: #dc262622;
+  --orange: #f97316; --orange-dim: #ea580c22;
+  --amber: #f59e0b; --amber-dim: #d9770622;
+  --gray: #6b7280; --gray-dim: #37415122;
+  --radius: 10px; --radius-sm: 6px;
+  --shadow: 0 4px 24px #00000055;
+  --transition: 0.18s ease;
+}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; font-size: 14px; line-height: 1.5; }
+a { color: var(--blue); text-decoration: none; }
+button { cursor: pointer; border: none; outline: none; font-family: inherit; }
+input, select { font-family: inherit; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg2); }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+
+/* Layout */
+#app { display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+
+/* Header */
+header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 24px; height: 56px; min-height: 56px;
+  background: var(--bg2); border-bottom: 1px solid var(--border);
+  z-index: 100;
+}
+.header-brand { display: flex; align-items: center; gap: 10px; }
+.header-brand svg { color: var(--blue); }
+.header-brand h1 { font-size: 15px; font-weight: 600; letter-spacing: -0.01em; }
+.header-brand span { color: var(--text3); font-weight: 400; }
+.header-right { display: flex; align-items: center; gap: 12px; }
+.job-badge { display: flex; align-items: center; gap: 8px; padding: 4px 12px; background: var(--bg3); border: 1px solid var(--border); border-radius: 20px; font-size: 13px; }
+.job-badge .job-id { font-family: 'JetBrains Mono', monospace; font-weight: 500; }
+
+/* Buttons */
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 7px 14px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; transition: all var(--transition); }
+.btn-primary { background: var(--blue); color: #fff; }
+.btn-primary:hover { background: #6fa3fa; }
+.btn-ghost { background: transparent; color: var(--text2); border: 1px solid var(--border); }
+.btn-ghost:hover { background: var(--bg3); color: var(--text); }
+.btn-danger { background: transparent; color: var(--red); border: 1px solid var(--red-dim); }
+.btn-danger:hover { background: var(--red-dim); }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Main area */
+#main { flex: 1; overflow: hidden; display: flex; position: relative; }
+
+/* Screens */
+.screen { position: absolute; inset: 0; overflow-y: auto; padding: 32px 28px; transition: opacity 0.2s, transform 0.2s; }
+.screen.hidden { opacity: 0; pointer-events: none; transform: translateY(8px); }
+
+/* ── New Job Screen ── */
+.new-job-wrap { max-width: 600px; margin: 40px auto; }
+.section-title { font-size: 22px; font-weight: 700; letter-spacing: -0.02em; margin-bottom: 6px; }
+.section-sub { color: var(--text2); margin-bottom: 32px; }
+.card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 24px; margin-bottom: 20px; }
+
+/* Drop zone */
+#drop-zone {
+  border: 2px dashed var(--border2); border-radius: var(--radius);
+  padding: 40px 24px; text-align: center; cursor: pointer;
+  transition: all var(--transition); position: relative;
+}
+#drop-zone:hover, #drop-zone.drag-over { border-color: var(--blue); background: var(--blue-dim); }
+#drop-zone svg { color: var(--blue); margin-bottom: 12px; }
+#drop-zone p { color: var(--text2); margin-bottom: 6px; }
+#drop-zone small { color: var(--text3); }
+#drop-zone input[type=file] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+#file-label { font-weight: 600; color: var(--blue); }
+
+/* Tasks preview */
+#tasks-preview { display: none; }
+.preview-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.preview-count { font-weight: 600; }
+.preview-list { display: flex; flex-direction: column; gap: 6px; max-height: 220px; overflow-y: auto; }
+.preview-item { display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; background: var(--bg3); border-radius: var(--radius-sm); }
+.preview-item .pid { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--blue); min-width: 80px; }
+.preview-item .ptask { color: var(--text2); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.check-icon { color: var(--green); flex-shrink: 0; margin-top: 2px; }
+
+/* Attempts input */
+.form-label { font-size: 13px; font-weight: 500; color: var(--text2); margin-bottom: 8px; display: block; }
+.input-row { display: flex; align-items: center; gap: 12px; }
+.num-input { width: 80px; padding: 8px 12px; background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--text); font-size: 15px; font-weight: 600; text-align: center; }
+.num-input:focus { border-color: var(--blue); outline: none; }
+.rollout-calc { color: var(--text2); font-size: 13px; }
+.rollout-calc strong { color: var(--text); }
+
+/* ── Job Dashboard ── */
+.dashboard-layout { display: grid; grid-template-columns: 1fr 380px; gap: 20px; min-height: 100%; }
+.dashboard-left { display: flex; flex-direction: column; gap: 20px; }
+.dashboard-right { border-left: 1px solid var(--border); padding-left: 20px; overflow-y: auto; }
+
+/* Summary cards */
+.stats-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+@media (max-width: 1200px) { .stats-grid { grid-template-columns: repeat(3, 1fr); } }
+.stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+.stat-card .label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text3); margin-bottom: 6px; }
+.stat-card .value { font-size: 24px; font-weight: 700; letter-spacing: -0.02em; }
+.stat-card.pass .value { color: var(--green); }
+.stat-card.fail .value { color: var(--red); }
+.stat-card.error .value { color: var(--orange); }
+.stat-card.running-c .value { color: var(--blue); }
+
+/* Progress */
+.progress-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; }
+.progress-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+.progress-label { font-weight: 600; }
+.progress-pct { font-family: 'JetBrains Mono', monospace; font-size: 15px; font-weight: 600; color: var(--blue); }
+.progress-bar { height: 8px; background: var(--bg4); border-radius: 4px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, var(--blue), #8b5cf6); border-radius: 4px; transition: width 0.5s ease; }
+.progress-sub { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--text3); }
+.success-rate { color: var(--green); font-weight: 600; }
+
+/* Task table */
+.table-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.table-header-row { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px 10px; border-bottom: 1px solid var(--border); }
+.table-title { font-weight: 600; }
+table { width: 100%; border-collapse: collapse; }
+th { padding: 10px 16px; text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text3); background: var(--bg3); border-bottom: 1px solid var(--border); }
+td { padding: 12px 16px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tbody tr { cursor: pointer; transition: background var(--transition); }
+tbody tr:hover { background: var(--bg3); }
+tbody tr.selected { background: var(--blue-dim); }
+.task-id-cell { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--blue); white-space: nowrap; }
+.task-text { color: var(--text2); max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.attempts-cell { font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+.pct-cell { font-weight: 600; }
+.pct-cell.high { color: var(--green); }
+.pct-cell.mid { color: var(--amber); }
+.pct-cell.low { color: var(--red); }
+
+/* Status badges */
+.badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; letter-spacing: 0.04em; white-space: nowrap; }
+.badge-pass { background: var(--green-dim); color: var(--green); }
+.badge-fail { background: var(--red-dim); color: var(--red); }
+.badge-error { background: var(--orange-dim); color: var(--orange); }
+.badge-timeout { background: var(--amber-dim); color: var(--amber); }
+.badge-running { background: var(--blue-dim); color: var(--blue); }
+.badge-queued { background: var(--gray-dim); color: var(--gray); }
+.badge-complete { background: var(--green-dim); color: var(--green); }
+.badge-cancelled { background: var(--gray-dim); color: var(--gray); }
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+.badge-running .dot { animation: pulse 1.4s infinite; }
+.dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; display: inline-block; }
+
+/* ── Task Drawer (right panel) ── */
+.drawer-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: var(--text3); text-align: center; gap: 12px; padding: 40px; }
+.drawer-empty svg { color: var(--border2); }
+.drawer-content { padding-bottom: 32px; }
+.drawer-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.drawer-title { font-size: 16px; font-weight: 700; }
+.drawer-sub { color: var(--text2); font-size: 13px; margin-top: 4px; line-height: 1.4; max-height: 60px; overflow: hidden; text-overflow: ellipsis; }
+.attempt-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+.attempt-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 12px 14px; background: var(--bg3); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); cursor: pointer; transition: all var(--transition);
+}
+.attempt-row:hover { border-color: var(--border2); background: var(--bg4); }
+.attempt-row.selected { border-color: var(--blue); background: var(--blue-dim); }
+.attempt-left { display: flex; align-items: center; gap: 10px; }
+.attempt-num { font-family: 'JetBrains Mono', monospace; font-size: 12px; color: var(--text3); }
+.attempt-dur { font-size: 12px; color: var(--text3); font-family: 'JetBrains Mono', monospace; }
+
+/* Rollout detail */
+.rollout-detail { background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; margin-top: 16px; }
+.rollout-detail-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px; border-bottom: 1px solid var(--border); background: var(--bg4); }
+.rollout-detail-title { font-weight: 600; font-size: 13px; }
+.meta-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; padding: 16px; border-bottom: 1px solid var(--border); }
+.meta-item .meta-label { font-size: 11px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 3px; }
+.meta-item .meta-value { font-weight: 600; font-size: 13px; font-family: 'JetBrains Mono', monospace; }
+.detail-section { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+.detail-section:last-child { border-bottom: none; }
+.detail-section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text3); margin-bottom: 10px; }
+
+/* Transcript */
+.transcript-list { display: flex; flex-direction: column; gap: 4px; max-height: 240px; overflow-y: auto; }
+.transcript-event { display: flex; align-items: flex-start; gap: 10px; padding: 6px 8px; border-radius: var(--radius-sm); }
+.transcript-event:hover { background: var(--bg4); }
+.event-icon { width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; margin-top: 1px; }
+.event-screenshot .event-icon { background: var(--blue-dim); color: var(--blue); }
+.event-action .event-icon { background: var(--green-dim); color: var(--green); }
+.event-raw .event-icon { background: var(--bg4); color: var(--text3); }
+.event-body { flex: 1; min-width: 0; }
+.event-text { font-size: 12px; color: var(--text2); }
+.event-ts { font-size: 11px; color: var(--text3); font-family: 'JetBrains Mono', monospace; }
+
+/* Grader */
+.grader-result { padding: 10px 12px; border-radius: var(--radius-sm); font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+.grader-pass { background: var(--green-dim); color: var(--green); border-left: 3px solid var(--green); }
+.grader-fail { background: var(--red-dim); color: var(--red); border-left: 3px solid var(--red); }
+.grader-reason { color: var(--text2); font-size: 12px; margin-top: 8px; font-family: inherit; line-height: 1.5; }
+.collapsible-toggle { display: flex; align-items: center; gap: 6px; cursor: pointer; font-size: 12px; color: var(--text3); margin-top: 8px; user-select: none; }
+.collapsible-toggle:hover { color: var(--text2); }
+.collapsible-body { display: none; margin-top: 8px; }
+.collapsible-body.open { display: block; }
+pre.json-block { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 10px; font-family: 'JetBrains Mono', monospace; font-size: 11px; color: var(--text2); overflow-x: auto; white-space: pre-wrap; word-break: break-all; }
+
+/* Screenshots strip */
+.screenshots-strip { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.thumb { width: 80px; height: 54px; object-fit: cover; border-radius: 4px; border: 1px solid var(--border); cursor: pointer; flex-shrink: 0; transition: border-color var(--transition); }
+.thumb:hover { border-color: var(--blue); }
+.no-screenshots { color: var(--text3); font-size: 12px; }
+
+/* Screenshot modal */
+#img-modal { display: none; position: fixed; inset: 0; background: #000d; z-index: 999; align-items: center; justify-content: center; }
+#img-modal.open { display: flex; }
+#img-modal img { max-width: 90vw; max-height: 90vh; border-radius: var(--radius); box-shadow: var(--shadow); }
+#img-modal-close { position: absolute; top: 20px; right: 20px; background: var(--bg2); border: 1px solid var(--border); border-radius: 50%; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; cursor: pointer; color: var(--text2); font-size: 18px; }
+
+/* Toast */
+#toast { position: fixed; bottom: 24px; right: 24px; z-index: 9999; display: flex; flex-direction: column; gap: 8px; }
+.toast-item { padding: 12px 16px; border-radius: var(--radius-sm); font-size: 13px; font-weight: 500; box-shadow: var(--shadow); animation: slideIn 0.2s ease; max-width: 340px; }
+.toast-error { background: var(--bg2); border-left: 3px solid var(--red); color: var(--text); }
+.toast-info { background: var(--bg2); border-left: 3px solid var(--blue); color: var(--text); }
+.toast-success { background: var(--bg2); border-left: 3px solid var(--green); color: var(--text); }
+@keyframes slideIn { from { opacity:0; transform: translateX(20px); } to { opacity:1; transform: translateX(0); } }
+
+/* Loading spinner */
+.spinner { width: 18px; height: 18px; border: 2px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin 0.7s linear infinite; display: inline-block; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Empty state */
+.empty-state { padding: 48px 24px; text-align: center; color: var(--text3); }
+.empty-state p { margin-bottom: 16px; }
+
+/* Utility */
+.flex { display: flex; } .items-center { align-items: center; } .gap-2 { gap: 8px; }
+.text-3 { color: var(--text3); } .font-mono { font-family: 'JetBrains Mono', monospace; }
+.truncate { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+<div id="app">
+  <!-- Header -->
+  <header>
+    <div class="header-brand">
+      <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.8">
+        <path stroke-linecap="round" stroke-linejoin="round" d="M9.75 3.104v5.714a2.25 2.25 0 01-.659 1.591L5 14.5M9.75 3.104c-.251.023-.501.05-.75.082m.75-.082a24.301 24.301 0 014.5 0m0 0v5.714c0 .597.237 1.17.659 1.591L19.8 15.3M14.25 3.104c.251.023.501.05.75.082M19.8 15.3l-1.57.393A9.065 9.065 0 0112 15a9.065 9.065 0 00-6.23-.693L5 14.5m14.8.8l1.402 1.402c1 1 .03 2.798-1.32 2.798H4.118c-1.35 0-2.32-1.798-1.32-2.798L4 15.3"/>
+      </svg>
+      <h1>Metabase <span>/ Computer-Use Evaluation</span></h1>
+    </div>
+    <div class="header-right" id="header-right">
+      <button class="btn btn-primary" id="btn-new-job" onclick="showScreen('new-job')">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/></svg>
+        New Job
+      </button>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <div id="main">
+
+    <!-- ── Screen: New Job ── -->
+    <div class="screen" id="screen-new-job">
+      <div class="new-job-wrap">
+        <div class="section-title">Create a rollout job</div>
+        <div class="section-sub">Upload a tasks file and configure evaluation parameters</div>
+
+        <!-- Drop zone -->
+        <div class="card" style="padding:0">
+          <div id="drop-zone">
+            <input type="file" id="file-input" accept=".json" onchange="handleFileSelect(this.files[0])">
+            <svg width="32" height="32" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m6.75 12l-3-3m0 0l-3 3m3-3v6m-1.5-15H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"/>
+            </svg>
+            <p><span id="file-label">Choose tasks.json</span> or drag & drop</p>
+            <small>JSON array of task objects with id and task fields</small>
+          </div>
+        </div>
+
+        <!-- Preview -->
+        <div class="card" id="tasks-preview">
+          <div class="preview-header">
+            <div class="preview-count" id="preview-count"></div>
+            <button class="btn btn-ghost" onclick="clearFile()" style="padding:4px 10px;font-size:12px">Clear</button>
+          </div>
+          <div class="preview-list" id="preview-list"></div>
+        </div>
+
+        <!-- Attempts -->
+        <div class="card">
+          <label class="form-label">Attempts per problem</label>
+          <div class="input-row">
+            <input type="number" id="attempts-input" class="num-input" value="3" min="1" max="10" oninput="updateCalc()">
+            <div class="rollout-calc" id="rollout-calc">— problems × — attempts = — rollouts</div>
+          </div>
+        </div>
+
+        <!-- Submit -->
+        <button class="btn btn-primary" style="width:100%;justify-content:center;padding:12px" id="btn-start" onclick="submitJob()" disabled>
+          <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347c-.75.412-1.667-.13-1.667-.985V5.653z"/></svg>
+          Start Job
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Screen: Dashboard ── -->
+    <div class="screen hidden" id="screen-dashboard">
+      <div class="dashboard-layout">
+        <!-- Left -->
+        <div class="dashboard-left">
+          <!-- Stats -->
+          <div class="stats-grid" id="stats-grid">
+            <div class="stat-card"><div class="label">Tasks</div><div class="value" id="stat-tasks">—</div></div>
+            <div class="stat-card"><div class="label">Rollouts</div><div class="value" id="stat-rollouts">—</div></div>
+            <div class="stat-card pass"><div class="label">Passed</div><div class="value" id="stat-passed">—</div></div>
+            <div class="stat-card fail"><div class="label">Failed</div><div class="value" id="stat-failed">—</div></div>
+            <div class="stat-card error"><div class="label">Errors</div><div class="value" id="stat-errors">—</div></div>
+            <div class="stat-card running-c"><div class="label">Running</div><div class="value" id="stat-running">—</div></div>
+          </div>
+
+          <!-- Progress -->
+          <div class="progress-card">
+            <div class="progress-header">
+              <span class="progress-label">Execution Progress</span>
+              <span class="progress-pct" id="prog-pct">0%</span>
+            </div>
+            <div class="progress-bar"><div class="progress-fill" id="prog-fill" style="width:0%"></div></div>
+            <div class="progress-sub">
+              <span id="prog-label">0 / 0 rollouts complete</span>
+              <span class="success-rate" id="prog-success">Success: 0%</span>
+            </div>
+          </div>
+
+          <!-- Task table -->
+          <div class="table-wrap">
+            <div class="table-header-row">
+              <div class="table-title">Tasks</div>
+              <button class="btn btn-ghost" id="btn-cancel" onclick="cancelJob()" style="display:none;padding:5px 10px;font-size:12px;color:var(--red)">Cancel Job</button>
+            </div>
+            <table id="task-table">
+              <thead>
+                <tr>
+                  <th>ID</th><th>Task</th><th>Attempts</th>
+                  <th>Pass</th><th>Fail</th><th>Status</th><th>Success</th>
+                </tr>
+              </thead>
+              <tbody id="task-tbody"></tbody>
+            </table>
+            <div class="empty-state hidden" id="task-empty">No tasks yet.</div>
+          </div>
+        </div>
+
+        <!-- Right: Task Drawer -->
+        <div class="dashboard-right" id="drawer">
+          <div class="drawer-empty" id="drawer-empty">
+            <svg width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.042 21.672L13.684 16.6m0 0l-2.51 2.225.569-9.47 5.227 7.917-3.286-.672zm-7.518-.267A8.25 8.25 0 1120.25 10.5M8.288 14.212A5.25 5.25 0 1117.25 10.5"/>
+            </svg>
+            <p>Select a task to inspect its attempts</p>
+          </div>
+          <div class="drawer-content hidden" id="drawer-content">
+            <div class="drawer-header">
+              <div>
+                <div class="drawer-title" id="drawer-task-id"></div>
+                <div class="drawer-sub" id="drawer-task-text"></div>
+              </div>
+            </div>
+            <div class="detail-section-title" style="padding:0 0 8px">Attempts</div>
+            <div class="attempt-list" id="attempt-list"></div>
+            <div id="rollout-detail-wrap"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<!-- Screenshot modal -->
+<div id="img-modal" onclick="closeImgModal()">
+  <button id="img-modal-close" onclick="closeImgModal()">×</button>
+  <img id="img-modal-img" src="" alt="Screenshot">
+</div>
+
+<!-- Toast container -->
+<div id="toast"></div>
+
+<script>
+// ── Config ──────────────────────────────────────────────────────────────────
+const API_BASE = window.location.search.includes('api=')
+  ? new URLSearchParams(window.location.search).get('api')
+  : 'http://localhost:8000/api';
+
+// ── State ────────────────────────────────────────────────────────────────────
+const state = {
+  currentJob: null,
+  tasks: [],
+  selectedTaskId: null,
+  selectedRolloutId: null,
+  selectedRollout: null,
+  pollingTimer: null,
+  taskFile: null,
+  parsedTasks: [],
+  maxAttempts: 10,
+};
+
+// ── API Client ───────────────────────────────────────────────────────────────
+async function api(path, opts = {}) {
+  const r = await fetch(`${API_BASE}${path}`, opts);
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({ detail: r.statusText }));
+    throw new Error(err.detail || r.statusText);
+  }
+  return r.json();
+}
+
+async function createJob(file, attempts) {
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('attempts', attempts);
+  return api('/jobs', { method: 'POST', body: fd });
+}
+async function getJob(id) { return api(`/jobs/${id}`); }
+async function getJobTasks(id) { return api(`/jobs/${id}/tasks`); }
+async function getRollout(id) { return api(`/rollouts/${id}`); }
+async function cancelJobApi(id) { return api(`/jobs/${id}`, { method: 'DELETE' }); }
+async function getConfig() { return api('/config').catch(() => ({ max_attempts: 10 })); }
+
+// ── Screens ──────────────────────────────────────────────────────────────────
+function showScreen(name) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.add('hidden'));
+  document.getElementById(`screen-${name}`).classList.remove('hidden');
+  if (name === 'new-job') {
+    document.getElementById('header-right').innerHTML = '';
+    stopPolling();
+  }
+  if (name === 'dashboard') {
+    document.getElementById('header-right').innerHTML = `
+      <button class="btn btn-ghost" onclick="refreshDashboard()">
+        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0l3.181 3.183a8.25 8.25 0 0013.803-3.7M4.031 9.865a8.25 8.25 0 0113.803-3.7l3.181 3.182m0-4.991v4.99"/></svg>
+        Refresh
+      </button>
+      <button class="btn btn-ghost" onclick="showScreen('new-job')">New Job</button>
+      <div class="job-badge">
+        <span class="job-id" id="header-job-id"></span>
+        <span id="header-job-status"></span>
+      </div>`;
+  }
+}
+
+// ── File Handling ────────────────────────────────────────────────────────────
+function handleFileSelect(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const tasks = JSON.parse(e.target.result);
+      if (!Array.isArray(tasks)) throw new Error('Expected array');
+      state.taskFile = file;
+      state.parsedTasks = tasks;
+      document.getElementById('file-label').textContent = file.name;
+      renderPreview(tasks);
+      updateCalc();
+      document.getElementById('btn-start').disabled = false;
+    } catch(err) {
+      toast('Invalid tasks file: ' + err.message, 'error');
+    }
+  };
+  reader.readAsText(file);
+}
+
+function renderPreview(tasks) {
+  const preview = document.getElementById('tasks-preview');
+  document.getElementById('preview-count').textContent = `${tasks.length} problem${tasks.length!==1?'s':''} detected`;
+  const list = document.getElementById('preview-list');
+  list.innerHTML = tasks.map(t => `
+    <div class="preview-item">
+      <svg class="check-icon" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/></svg>
+      <span class="pid">${t.id}</span>
+      <span class="ptask">${t.task.substring(0, 90)}${t.task.length>90?'…':''}</span>
+    </div>`).join('');
+  preview.style.display = '';
+}
+
+function clearFile() {
+  state.taskFile = null; state.parsedTasks = [];
+  document.getElementById('file-label').textContent = 'Choose tasks.json';
+  document.getElementById('file-input').value = '';
+  document.getElementById('tasks-preview').style.display = 'none';
+  document.getElementById('btn-start').disabled = true;
+  updateCalc();
+}
+
+function updateCalc() {
+  const n = state.parsedTasks.length;
+  const a = parseInt(document.getElementById('attempts-input').value) || 0;
+  document.getElementById('rollout-calc').innerHTML = n
+    ? `<strong>${n}</strong> problems × <strong>${a}</strong> attempts = <strong>${n*a}</strong> total rollouts`
+    : '— problems × — attempts = — rollouts';
+}
+
+// Drag & drop
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); if(e.dataTransfer.files[0]) handleFileSelect(e.dataTransfer.files[0]); });
+
+// ── Job Submission ───────────────────────────────────────────────────────────
+async function submitJob() {
+  if (!state.taskFile) return toast('Please select a tasks file first.', 'error');
+  const attempts = parseInt(document.getElementById('attempts-input').value);
+  if (!attempts || attempts < 1) return toast('Attempts must be at least 1.', 'error');
+
+  const btn = document.getElementById('btn-start');
+  btn.disabled = true;
+  btn.innerHTML = '<span class="spinner"></span> Starting…';
+
+  try {
+    const job = await createJob(state.taskFile, attempts);
+    state.currentJob = job;
+    state.tasks = [];
+    state.selectedTaskId = null;
+    state.selectedRolloutId = null;
+    state.selectedRollout = null;
+    showScreen('dashboard');
+    renderJobHeader(job);
+    await refreshDashboard();
+    startPolling();
+    toast(`Job ${job.job_id} started with ${job.total_rollouts} rollouts.`, 'success');
+  } catch(err) {
+    toast('Could not create job: ' + err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5.25 5.653c0-.856.917-1.398 1.667-.986l11.54 6.348a1.125 1.125 0 010 1.971l-11.54 6.347c-.75.412-1.667-.13-1.667-.985V5.653z"/></svg> Start Job';
+  }
+}
+
+// ── Dashboard Rendering ──────────────────────────────────────────────────────
+function renderJobHeader(job) {
+  const hid = document.getElementById('header-job-id');
+  const hst = document.getElementById('header-job-status');
+  if (hid) hid.textContent = `Job #${job.job_id.substring(0,8)}`;
+  if (hst) hst.innerHTML = badgeHtml(job.status);
+  const cancelBtn = document.getElementById('btn-cancel');
+  if (cancelBtn) cancelBtn.style.display = ['QUEUED','RUNNING'].includes(job.status) ? '' : 'none';
+}
+
+function renderStats(job) {
+  document.getElementById('stat-tasks').textContent = job.tasks_count ?? '—';
+  document.getElementById('stat-rollouts').textContent = job.total_rollouts ?? '—';
+  document.getElementById('stat-passed').textContent = job.passed ?? 0;
+  document.getElementById('stat-failed').textContent = (job.failed ?? 0) + (job.timeouts ?? 0);
+  document.getElementById('stat-errors').textContent = job.errors ?? 0;
+  document.getElementById('stat-running').textContent = job.running ?? 0;
+
+  const total = job.total_rollouts || 1;
+  const done = job.completed ?? 0;
+  const pct = Math.round(done / total * 100);
+  const successPct = done > 0 ? Math.round((job.passed??0) / total * 100) : 0;
+  document.getElementById('prog-fill').style.width = pct + '%';
+  document.getElementById('prog-pct').textContent = pct + '%';
+  document.getElementById('prog-label').textContent = `${done} / ${total} rollouts complete`;
+  document.getElementById('prog-success').textContent = `Success: ${successPct}%`;
+}
+
+function renderTaskTable(tasks) {
+  const tbody = document.getElementById('task-tbody');
+  if (!tasks.length) {
+    tbody.innerHTML = '';
+    document.getElementById('task-empty').classList.remove('hidden');
+    return;
+  }
+  document.getElementById('task-empty').classList.add('hidden');
+  tbody.innerHTML = tasks.map(t => {
+    const pct = t.total > 0 ? (t.passed / t.total * 100).toFixed(1) : '0.0';
+    const pctClass = parseFloat(pct) >= 66 ? 'high' : parseFloat(pct) >= 33 ? 'mid' : 'low';
+    const selected = t.task_id === state.selectedTaskId ? 'selected' : '';
+    return `<tr class="${selected}" onclick="selectTask('${t.task_id}')">
+      <td><span class="task-id-cell">${t.task_id}</span></td>
+      <td><span class="task-text" title="${t.task}">${t.task.substring(0,60)}${t.task.length>60?'…':''}</span></td>
+      <td class="font-mono" style="font-size:12px">${t.completed}/${t.total}</td>
+      <td style="color:var(--green);font-weight:600">${t.passed}</td>
+      <td style="color:var(--red);font-weight:600">${t.failed + (t.timeouts||0)}</td>
+      <td>${badgeHtml(t.status)}</td>
+      <td class="pct-cell ${pctClass}">${pct}%</td>
+    </tr>`;
+  }).join('');
+}
+
+async function refreshDashboard() {
+  if (!state.currentJob) return;
+  try {
+    const [job, tasks] = await Promise.all([
+      getJob(state.currentJob.job_id),
+      getJobTasks(state.currentJob.job_id),
+    ]);
+    state.currentJob = job;
+    state.tasks = tasks;
+    renderJobHeader(job);
+    renderStats(job);
+    renderTaskTable(tasks);
+
+    // Refresh open rollout if it exists and is still running
+    if (state.selectedRolloutId && state.selectedRollout?.status === 'RUNNING') {
+      await loadRolloutDetail(state.selectedRolloutId);
+    }
+    // Re-render drawer if a task is selected (update attempt badges)
+    if (state.selectedTaskId) {
+      const task = tasks.find(t => t.task_id === state.selectedTaskId);
+      if (task) renderDrawer(task, false);
+    }
+  } catch(err) {
+    toast('Could not load job: ' + err.message, 'error');
+  }
+}
+
+// ── Polling ──────────────────────────────────────────────────────────────────
+function startPolling() {
+  stopPolling();
+  state.pollingTimer = setInterval(async () => {
+    await refreshDashboard();
+    const s = state.currentJob?.status;
+    if (['COMPLETE','FAILED','CANCELLED'].includes(s)) stopPolling();
+  }, 2000);
+}
+function stopPolling() {
+  if (state.pollingTimer) { clearInterval(state.pollingTimer); state.pollingTimer = null; }
+}
+
+// ── Task Drawer ──────────────────────────────────────────────────────────────
+async function selectTask(taskId) {
+  state.selectedTaskId = taskId;
+  state.selectedRolloutId = null;
+  state.selectedRollout = null;
+  document.getElementById('rollout-detail-wrap').innerHTML = '';
+
+  const task = state.tasks.find(t => t.task_id === taskId);
+  if (!task) return;
+
+  document.querySelectorAll('#task-tbody tr').forEach(r => r.classList.remove('selected'));
+  const rows = document.querySelectorAll('#task-tbody tr');
+  rows.forEach(r => { if(r.cells[0]?.querySelector('.task-id-cell')?.textContent === taskId) r.classList.add('selected'); });
+
+  renderDrawer(task, true);
+}
+
+function renderDrawer(task, animate) {
+  document.getElementById('drawer-empty').classList.add('hidden');
+  document.getElementById('drawer-content').classList.remove('hidden');
+  document.getElementById('drawer-task-id').textContent = task.task_id;
+  document.getElementById('drawer-task-text').textContent = task.task;
+
+  const list = document.getElementById('attempt-list');
+  list.innerHTML = (task.rollout_ids||[]).map((rid, i) => {
+    const rollout = getRolloutFromCache(rid);
+    const status = rollout?.status ?? 'QUEUED';
+    const dur = rollout?.duration_seconds ? `${rollout.duration_seconds.toFixed(1)}s` : '';
+    const sel = rid === state.selectedRolloutId ? 'selected' : '';
+    return `<div class="attempt-row ${sel}" onclick="selectRollout('${rid}', ${i+1})">
+      <div class="attempt-left">
+        <span class="attempt-num">Attempt ${i+1}</span>
+        ${badgeHtml(status)}
+      </div>
+      <span class="attempt-dur">${dur}</span>
+    </div>`;
+  }).join('') || '<div class="text-3" style="font-size:13px">No rollouts yet.</div>';
+}
+
+// Cache rollouts we've loaded
+const _rolloutCache = {};
+function getRolloutFromCache(rid) { return _rolloutCache[rid] || null; }
+
+async function selectRollout(rolloutId, attemptNum) {
+  state.selectedRolloutId = rolloutId;
+  document.querySelectorAll('.attempt-row').forEach(r => r.classList.remove('selected'));
+  event.currentTarget.classList.add('selected');
+  await loadRolloutDetail(rolloutId, attemptNum);
+}
+
+async function loadRolloutDetail(rolloutId, attemptNum) {
+  const wrap = document.getElementById('rollout-detail-wrap');
+  wrap.innerHTML = '<div style="padding:16px;color:var(--text3);font-size:13px"><span class="spinner"></span> Loading…</div>';
+  try {
+    const r = await getRollout(rolloutId);
+    _rolloutCache[rolloutId] = r;
+    state.selectedRollout = r;
+    wrap.innerHTML = renderRolloutDetail(r, attemptNum);
+  } catch(err) {
+    wrap.innerHTML = `<div style="padding:16px;color:var(--red);font-size:13px">Could not load rollout: ${err.message}</div>`;
+  }
+}
+
+function renderRolloutDetail(r, num) {
+  const statusColor = { PASS:'var(--green)', FAIL:'var(--red)', ERROR:'var(--orange)', TIMEOUT:'var(--amber)', RUNNING:'var(--blue)', QUEUED:'var(--gray)' }[r.status] || 'var(--text)';
+  const graderPassed = r.grader_result?.passed;
+  const graderReason = r.grader_result?.reason || '';
+
+  const transcriptHtml = (r.transcript||[]).map(ev => {
+    if (ev.type === 'screenshot') {
+      return `<div class="transcript-event event-screenshot">
+        <div class="event-icon">📷</div>
+        <div class="event-body"><div class="event-text">Screenshot captured</div><div class="event-ts">${ev.timestamp||''}</div></div>
+      </div>`;
+    }
+    if (ev.type === 'action') {
+      const labels = { click:'Click', type:'Type', navigate:'Navigate', scroll:'Scroll' };
+      const val = ev.target || ev.text || ev.url || ev.direction || '';
+      return `<div class="transcript-event event-action">
+        <div class="event-icon">▶</div>
+        <div class="event-body"><div class="event-text">${labels[ev.action]||ev.action}: <strong>${val}</strong></div><div class="event-ts">${ev.timestamp||''}</div></div>
+      </div>`;
+    }
+    return `<div class="transcript-event event-raw">
+      <div class="event-icon">•</div>
+      <div class="event-body"><div class="event-text">${String(ev.content||JSON.stringify(ev)).substring(0,120)}</div></div>
+    </div>`;
+  }).join('') || '<div class="text-3" style="font-size:12px;padding:4px">No transcript data.</div>';
+
+  const screenshotsHtml = (r.screenshots||[]).length
+    ? `<div class="screenshots-strip">${(r.screenshots).map(s =>
+        `<img class="thumb" src="${API_BASE}/artifacts/${r.artifacts_dir}/${s}" alt="${s}" onclick="openImgModal(this.src)" onerror="this.style.display='none'">`
+      ).join('')}</div>`
+    : '<div class="no-screenshots">No screenshots were captured for this rollout.</div>';
+
+  const graderJson = JSON.stringify({ predicted: r.grader_result?.predicted, ground_truth: r.grader_result?.ground_truth }, null, 2);
+
+  return `<div class="rollout-detail">
+    <div class="rollout-detail-header">
+      <div class="rollout-detail-title">Attempt ${num||''} — <span style="font-family:'JetBrains Mono',monospace;font-size:11px;color:var(--text3)">${r.rollout_id}</span></div>
+      ${badgeHtml(r.status)}
+    </div>
+    <div class="meta-grid">
+      <div class="meta-item"><div class="meta-label">Status</div><div class="meta-value" style="color:${statusColor}">${r.status}</div></div>
+      <div class="meta-item"><div class="meta-label">Reward</div><div class="meta-value">${r.reward ?? '—'}</div></div>
+      <div class="meta-item"><div class="meta-label">Duration</div><div class="meta-value">${r.duration_seconds ? r.duration_seconds.toFixed(1)+'s' : '—'}</div></div>
+      <div class="meta-item"><div class="meta-label">Termination</div><div class="meta-value" style="font-size:11px;word-break:break-all">${r.termination_reason||'—'}</div></div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-title">Agent Transcript</div>
+      <div class="transcript-list">${transcriptHtml}</div>
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-title">Screenshots</div>
+      ${screenshotsHtml}
+    </div>
+    <div class="detail-section">
+      <div class="detail-section-title">Grader Evidence</div>
+      <div class="grader-result ${graderPassed ? 'grader-pass' : 'grader-fail'}">
+        ${graderPassed ? '✓ PASSED' : '✗ FAILED'}
+      </div>
+      <div class="grader-reason">${graderReason}</div>
+      <div class="collapsible-toggle" onclick="toggleCollapsible(this)">
+        <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19.5 8.25l-7.5 7.5-7.5-7.5"/></svg>
+        Expected vs. observed
+      </div>
+      <div class="collapsible-body">
+        <pre class="json-block">${escHtml(graderJson)}</pre>
+      </div>
+    </div>
+  </div>`;
+}
+
+function toggleCollapsible(el) {
+  const body = el.nextElementSibling;
+  body.classList.toggle('open');
+  el.querySelector('svg').style.transform = body.classList.contains('open') ? 'rotate(180deg)' : '';
+}
+
+// ── Cancel Job ───────────────────────────────────────────────────────────────
+async function cancelJob() {
+  if (!state.currentJob) return;
+  if (!confirm('Cancel this job? Running rollouts will be marked as ERROR.')) return;
+  try {
+    await cancelJobApi(state.currentJob.job_id);
+    stopPolling();
+    await refreshDashboard();
+    toast('Job cancelled.', 'info');
+  } catch(err) {
+    toast('Could not cancel: ' + err.message, 'error');
+  }
+}
+
+// ── Badges ───────────────────────────────────────────────────────────────────
+function badgeHtml(status) {
+  const map = {
+    PASS: 'pass', FAIL: 'fail', ERROR: 'error', TIMEOUT: 'timeout',
+    RUNNING: 'running', QUEUED: 'queued', COMPLETE: 'complete',
+    CANCELLED: 'cancelled', FAILED: 'fail',
+  };
+  const cls = map[status] || 'queued';
+  const dot = status === 'RUNNING' ? '<span class="dot"></span>' : '';
+  return `<span class="badge badge-${cls}">${dot}${status}</span>`;
+}
+
+// ── Screenshot modal ─────────────────────────────────────────────────────────
+function openImgModal(src) {
+  document.getElementById('img-modal-img').src = src;
+  document.getElementById('img-modal').classList.add('open');
+}
+function closeImgModal() { document.getElementById('img-modal').classList.remove('open'); }
+
+// ── Toast ────────────────────────────────────────────────────────────────────
+function toast(msg, type = 'info') {
+  const el = document.createElement('div');
+  el.className = `toast-item toast-${type}`;
+  el.textContent = msg;
+  document.getElementById('toast').appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+// ── Utility ──────────────────────────────────────────────────────────────────
+function escHtml(str) { return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── Init ─────────────────────────────────────────────────────────────────────
+(async () => {
+  const cfg = await getConfig();
+  state.maxAttempts = cfg.max_attempts || 10;
+  document.getElementById('attempts-input').max = state.maxAttempts;
+  showScreen('new-job');
+})();
+</script>
+</body>
+</html>
