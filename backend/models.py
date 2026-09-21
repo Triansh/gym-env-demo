@@ -100,8 +100,6 @@ class Rollout(BaseModel):
     def to_dict(self) -> Dict[str, Any]:
         """Full representation for detail endpoints and persistence."""
         data = self.model_dump(mode="json")
-        if "grader_result" in data and isinstance(data["grader_result"], dict):
-            data["grader_result"].pop("ground_truth", None)
         return data
 
     @classmethod
@@ -163,9 +161,6 @@ class Job(BaseModel):
     def to_dict(self) -> Dict[str, Any]:
         """Full representation for detail endpoints and persistence."""
         data = self.model_dump(mode="json")
-        for t in data.get("tasks", []):
-            if isinstance(t, dict):
-                t.pop("expected_answer", None)
         return data
 
     @classmethod

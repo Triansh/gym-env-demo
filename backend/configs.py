@@ -30,7 +30,7 @@ DEFAULT_METABASE_URL = os.environ.get("METABASE_URL", "http://localhost:3000")
 DEFAULT_DOCKER_COMPOSE_FILE = BACKEND_DIR / "docker-compose.yml"
 DEFAULT_ENV_TIMEOUT = int(os.environ.get("ENV_TIMEOUT", "180"))  # Seconds to wait for Metabase startup
 ENVIRONMENT_START_TIMEOUT = int(os.environ.get("ENVIRONMENT_START_TIMEOUT", "180"))  # Seconds for environment health check
-AGENT_TIMEOUT = int(os.environ.get("AGENT_TIMEOUT", "300"))  # Seconds for single agent execution
+AGENT_TIMEOUT = int(os.environ.get("AGENT_TIMEOUT", "400"))  # Seconds for single agent execution
 GRADER_TIMEOUT = int(os.environ.get("GRADER_TIMEOUT", "30"))  # Seconds for grader execution
 
 # Benchmark / Rollout Execution Settings
@@ -43,6 +43,12 @@ MAX_CONCURRENT_ROLLOUTS = int(os.environ.get("MAX_CONCURRENT_ROLLOUTS", "5"))  #
 ROLLOUT_PORT_BASE = int(os.environ.get("ROLLOUT_PORT_BASE", "3100"))  # Base port for Metabase; each rollout gets BASE+slot
 MAX_ATTEMPTS = int(os.environ.get("MAX_ATTEMPTS", "10"))
 MOCK_ROLLOUTS = os.environ.get("MOCK_ROLLOUTS", "0").lower() in ("true", "1")
+
+# Non-Blocking API Execution
+SQLITE_BUSY_TIMEOUT_SECONDS = float(os.environ.get("SQLITE_BUSY_TIMEOUT_SECONDS", "1.0"))
+API_DB_READ_TIMEOUT_SECONDS = float(os.environ.get("API_DB_READ_TIMEOUT_SECONDS", "2.0"))
+API_BLOCKING_CALL_TIMEOUT_SECONDS = float(os.environ.get("API_BLOCKING_CALL_TIMEOUT_SECONDS", "10.0"))
+API_DB_EXECUTOR_WORKERS = int(os.environ.get("API_DB_EXECUTOR_WORKERS", "8"))
 
 # State & Artifact Storage
 ARTIFACTS_ROOT = WORKSPACE_ROOT / os.environ.get("ARTIFACTS_ROOT", "rollout_artifacts")

@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 import logging
 from pathlib import Path
-from typing import Any, List, Optional, Union
+from typing import Any, List, Optional, Union, Dict
 
 from pydantic import BaseModel, ConfigDict
 from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
@@ -20,6 +20,7 @@ from backend.jobs import TaskValidationError, create_job, load_and_validate_task
 from backend.models import JobStatus, RolloutStatus
 from backend.db import SQLiteStore
 from backend.workers import run_job, JobManager
+from backend.api.api_runtime import run_blocking_api_call, run_db_read
 
 logger = logging.getLogger("backend.api")
 
@@ -66,13 +67,13 @@ async def get_config():
     }
 
 @app.get("/api/jobs")
-def list_jobs():
-    jobs = store.list_jobs()
+async def list_jobs():
+    jobs = await run_db_read("GET /api/jobs", store.list_jobs)
     return [j.to_dict() for j in jobs]
 
 
 @app.get("/api/jobs/history")
-def get_jobs_history(
+async def get_jobs_history(
     status: Optional[str] = None,
     search: Optional[str] = None,
     limit: Optional[int] = None,
@@ -82,7 +83,7 @@ def get_jobs_history(
     Returns aggregated run history statistics and job list for the Job History dashboard.
     Supports filtering by status (COMPLETED, RUNNING, FAILED, CANCELLED, QUEUED) and search query.
     """
-    return store.get_job_history(status=status, search=search, limit=limit, offset=offset)
+    return await run_db_read("GET /api/jobs/history", store.get_job_history, status=status, search=search, limit=limit, offset=offset)
 
 
 @app.post("/api/jobs", status_code=201)
@@ -139,19 +140,22 @@ async def create_new_job(
         raise HTTPException(status_code=400, detail=str(e))
 
     job, rollouts = create_job(raw_tasks, attempts_val, task_file=task_file_name)
-    store.create_job(job, rollouts)
+    await run_blocking_api_call("POST /api/jobs", store.create_job, job, rollouts)
 
     # Save uploaded/submitted task JSON file to job artifacts directory
-    try:
-        job_artifact_dir = ARTIFACTS_ROOT / job.id
-        job_artifact_dir.mkdir(parents=True, exist_ok=True)
-        if isinstance(contents, bytes):
-            (job_artifact_dir / "tasks.json").write_bytes(contents)
-        else:
-            import json as json_module
-            (job_artifact_dir / "tasks.json").write_text(json_module.dumps(contents, indent=2))
-    except Exception as e:
-        logger.warning(f"Could not write tasks.json artifact for job {job.id}: {e}")
+    def save_artifact():
+        try:
+            job_artifact_dir = ARTIFACTS_ROOT / job.id
+            job_artifact_dir.mkdir(parents=True, exist_ok=True)
+            if isinstance(contents, bytes):
+                (job_artifact_dir / "tasks.json").write_bytes(contents)
+            else:
+                import json as json_module
+                (job_artifact_dir / "tasks.json").write_text(json_module.dumps(contents, indent=2))
+        except Exception as e:
+            logger.warning(f"Could not write tasks.json artifact for job {job.id}: {e}")
+
+    await run_blocking_api_call("POST /api/jobs (write artifact)", save_artifact)
 
     # Dispatch rollouts in a background asyncio task
     import asyncio
@@ -168,15 +172,31 @@ async def create_new_job(
 
 
 @app.get("/api/jobs/{job_id}/tasks.json")
-def get_job_tasks_json(job_id: str):
+async def get_job_tasks_json(job_id: str):
     """Retrieve the original tasks.json file submitted for a specific job."""
-    task_file_path = ARTIFACTS_ROOT / job_id / "tasks.json"
-    if task_file_path.exists():
-        return FileResponse(str(task_file_path), media_type="application/json")
-
-    job = store.get_job(job_id)
+    job = await run_db_read(f"GET /api/jobs/{job_id}/tasks.json", store.get_job, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
+        
+    is_complete = job.status not in (JobStatus.QUEUED, JobStatus.RUNNING)
+
+    task_file_path = ARTIFACTS_ROOT / job_id / "tasks.json"
+    if task_file_path.exists():
+        if is_complete:
+            return FileResponse(str(task_file_path), media_type="application/json")
+        else:
+            import json as json_module
+            from fastapi.responses import JSONResponse
+            try:
+                data = json_module.loads(task_file_path.read_text())
+                if isinstance(data, list):
+                    for t in data:
+                        if isinstance(t, dict) and "answer" in t:
+                            t["answer"] = "[REDACTED UNTIL JOB COMPLETES]"
+                return JSONResponse(data)
+            except Exception as e:
+                logger.error(f"Error reading tasks.json for {job_id}: {e}")
+                # Fallback to DB if parsing fails
 
     tasks_data = [
         {"id": t.id, "task": t.prompt}
@@ -186,29 +206,35 @@ def get_job_tasks_json(job_id: str):
 
 
 @app.get("/api/jobs/{job_id}")
-def get_job(job_id: str):
-    job = store.get_job(job_id)
+async def get_job(job_id: str):
+    job = await run_db_read(f"GET /api/jobs/{job_id}", store.get_job, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    return job.to_dict()
+    
+    job_dict = job.to_dict()
+    if job.status in (JobStatus.QUEUED, JobStatus.RUNNING):
+        for t in job_dict.get("tasks", []):
+            if "expected_answer" in t:
+                t["expected_answer"] = "[REDACTED UNTIL JOB COMPLETES]"
+    return job_dict
 
 
 @app.get("/api/jobs/{job_id}/rollouts")
-def get_job_rollouts(job_id: str):
-    job = store.get_job(job_id)
+async def get_job_rollouts(job_id: str):
+    job = await run_db_read(f"GET /api/jobs/{job_id}", store.get_job, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    rollouts = store.get_rollouts_for_job(job_id)
+    rollouts = await run_db_read(f"GET /api/jobs/{job_id}/rollouts", store.get_rollouts_for_job, job_id)
     return [r.to_summary() for r in rollouts]
 
 
 @app.get("/api/jobs/{job_id}/tasks")
-def get_job_tasks(job_id: str):
+async def get_job_tasks(job_id: str):
     """Per-task aggregated summaries (for the frontend task view)."""
-    job = store.get_job(job_id)
+    job = await run_db_read(f"GET /api/jobs/{job_id}/tasks", store.get_job, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
-    rollouts = store.get_rollouts_for_job(job_id)
+    rollouts = await run_db_read(f"GET /api/jobs/{job_id}/rollouts", store.get_rollouts_for_job, job_id)
 
     # Group rollouts by task_id
     from collections import defaultdict
@@ -264,8 +290,8 @@ def get_job_tasks(job_id: str):
 
 
 @app.delete("/api/jobs/{job_id}")
-def cancel_job(job_id: str):
-    job = store.get_job(job_id)
+async def cancel_job(job_id: str):
+    job = await run_db_read(f"GET /api/jobs/{job_id} for cancel", store.get_job, job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
     if job.status not in (JobStatus.QUEUED, JobStatus.RUNNING):
@@ -273,7 +299,7 @@ def cancel_job(job_id: str):
             status_code=400,
             detail=f"Cannot cancel a job with status {job.status}",
         )
-    cancelled = store.cancel_job(job_id)
+    cancelled = await run_blocking_api_call(f"DELETE /api/jobs/{job_id}", store.cancel_job, job_id)
     if not cancelled:
         raise HTTPException(status_code=400, detail="Job could not be cancelled")
     return {"status": "CANCELLED", "job_id": job_id}
@@ -284,16 +310,16 @@ def cancel_job(job_id: str):
 # ---------------------------------------------------------------------------
 
 @app.get("/api/rollouts/{rollout_id}")
-def get_rollout(rollout_id: str):
-    rollout = store.get_rollout(rollout_id)
+async def get_rollout(rollout_id: str):
+    rollout = await run_db_read(f"GET /api/rollouts/{rollout_id}", store.get_rollout, rollout_id)
     if not rollout:
         raise HTTPException(status_code=404, detail="Rollout not found")
     return rollout.to_dict()
 
 
 @app.get("/api/rollouts/{rollout_id}/screenshots")
-def get_rollout_screenshots(rollout_id: str):
-    rollout = store.get_rollout(rollout_id)
+async def get_rollout_screenshots(rollout_id: str):
+    rollout = await run_db_read(f"GET /api/rollouts/{rollout_id}/screenshots", store.get_rollout, rollout_id)
     if not rollout:
         raise HTTPException(status_code=404, detail="Rollout not found")
     return {
@@ -318,6 +344,12 @@ async def on_shutdown():
 # ---------------------------------------------------------------------------
 @app.get("/api/artifacts/{path:path}")
 async def get_artifact(path: str):
+    if path.endswith("tasks.json"):
+        raise HTTPException(
+            status_code=403, 
+            detail="tasks.json must be fetched via /api/jobs/{job_id}/tasks.json for access control"
+        )
+        
     safe_path = (ARTIFACTS_ROOT / path).resolve()
     if not str(safe_path).startswith(str(ARTIFACTS_ROOT.resolve())):
         raise HTTPException(status_code=403, detail="Access denied")

@@ -12,7 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Union
 
-from backend.configs import SQLITE_DB_PATH
+from backend.configs import SQLITE_DB_PATH, SQLITE_BUSY_TIMEOUT_SECONDS
 from backend.models import ErrorType, Job, JobStatus, Rollout, RolloutStatus, Task
 
 logger = logging.getLogger(__name__)
@@ -32,7 +32,11 @@ class SQLiteStore:
         self.db_path = Path(db_path) if db_path else SQLITE_DB_PATH
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         # Single connection shared by all threads.
-        self._conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
+        self._conn = sqlite3.connect(
+            str(self.db_path),
+            timeout=SQLITE_BUSY_TIMEOUT_SECONDS,
+            check_same_thread=False,
+        )
         self._conn.row_factory = sqlite3.Row
         # Reentrant so nested write paths (e.g. update_rollout → _recompute_job_progress)
         # can acquire the lock without deadlocking.

@@ -80,9 +80,13 @@ class EnvironmentManager:
 
         logger.info(f"[{self.project_name}] Starting containers (Metabase:{self.metabase_port}, PG:{self.postgres_port})...")
         cmd = self._compose_cmd("up", "-d")
-        res = _run(cmd, cwd=str(self.project_dir), env=self._compose_env())
-        if res.returncode != 0:
-            raise RuntimeError(f"[{self.project_name}] Failed to start environment:\n{res.stderr}")
+        try:
+            res = _run(cmd, cwd=str(self.project_dir), env=self._compose_env())
+            if res.returncode != 0:
+                raise RuntimeError(f"[{self.project_name}] Failed to start environment:\n{res.stderr}")
+        except subprocess.TimeoutExpired:
+            logger.error(f"[{self.project_name}] dockerd hung while starting.")
+            raise RuntimeError(f"[{self.project_name}] Docker command timeout during start")
         logger.info(f"[{self.project_name}] Containers started.")
 
     def wait_until_ready(self, timeout: int = 180) -> bool:

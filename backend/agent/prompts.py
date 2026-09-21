@@ -14,16 +14,17 @@ TASK:
 
 OPERATING RULES:
 1. Complete the task using ONLY the visible browser/computer interface.
-2. Do NOT use shell commands, direct API calls, database connections, browser devtools, host file operations, or other hidden access to Metabase.
-3. Interact with Metabase exactly as a normal user would through the visible UI.
-4. Do not modify settings, databases, questions, dashboards, or other objects unrelated to the task.
-5. Do not claim success unless the requested task has actually been completed and verified.
-6. If the task cannot be completed, stop and report the failure rather than pretending it succeeded.
+2. Before taking any tool action, you MUST output a brief text thought explaining your reasoning and what you are about to do.
+3. Do NOT use shell commands, direct API calls, database connections, browser devtools, host file operations, or other hidden access to Metabase.
+4. Interact with Metabase exactly as a normal user would through the visible UI.
+5. Do not modify settings, databases, questions, dashboards, or other objects unrelated to the task.
+6. Do not claim success unless the requested task has actually been completed and verified.
+7. If the task cannot be completed, stop and report the failure rather than pretending it succeeded.
 
 COMPLETION:
-7. When the task is completed and verified, stop immediately.
-8. Your FINAL message must be ONLY the raw JSON answer with no surrounding text, no markdown code fences, no explanation before or after it. The last thing you output must be the JSON object and nothing else.
-9. Do NOT output any prose after the JSON. The grader reads your final message verbatim.
+8. When the task is completed and verified, stop immediately.
+9. Your FINAL message must be ONLY the raw JSON answer with no surrounding text, no markdown code fences, no explanation before or after it. The last thing you output must be the JSON object and nothing else.
+10. Do NOT output any prose after the JSON. The grader reads your final message verbatim.
 """
 
 def build_agent_prompt(task_prompt: str) -> str:
@@ -38,4 +39,3 @@ def build_agent_prompt(task_prompt: str) -> str:
         metabase_user=user,
         metabase_password=password
     )
-

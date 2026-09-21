@@ -51,98 +51,7 @@ def _port_for_slot(slot: int) -> tuple[int, int]:
     """Return (metabase_port, postgres_port) for a worker slot index."""
     return ROLLOUT_PORT_BASE + slot, ROLLOUT_PORT_BASE + 100 + slot
 
-def _run_agent_in_process(q, task_prompt: str, metabase_url: str, model_name: str, screen_size: tuple):
-    """Executes the agent in a dedicated process and returns strictly JSON-picklable parsed data."""
-    try:
-        from backend.agent.runner import AgentRunner
-        import traceback
-        agent_runner = AgentRunner(model_name=model_name)
-        agent_out = agent_runner.run(task_prompt, metabase_url, screen_size)
-        
-        history = agent_out.get("history", [])
-        step_screenshots = agent_out.get("screenshots", [])
-        agent_claim = agent_out.get("agent_claim", "")
-        
-        # Serialize history BEFORE putting it in the inter-process queue
-        # format_history_steps strips out complex objects (e.g. from Google GenAI)
-        steps = format_history_steps(history, step_screenshots)
-        
-        q.put({
-            "success": True,
-            "agent_claim": agent_claim,
-            "steps": steps,
-            "step_screenshots": step_screenshots
-        })
-    except Exception as e:
-        import traceback
-        q.put({
-            "success": False, 
-            "error": str(e),
-            "traceback": traceback.format_exc()
-        })
-
-
-def format_history_steps(history, step_screenshots):
-    """
-    Parses raw agent execution history into a list of structured step objects.
-    Each step matches 1-to-1 with a step screenshot.
-    """
-    steps = []
-    current_step = None
-    step_counter = 0
-
-    for item in history:
-        role = getattr(item, 'role', '')
-        parts = getattr(item, 'parts', [])
-        if isinstance(item, dict):
-            role = item.get('role', '')
-            parts = item.get('parts', [])
-
-        if role == 'model':
-            thought = ""
-            function_calls = []
-
-            for part in parts:
-                p_text = getattr(part, 'text', '') if not isinstance(part, dict) else part.get('text', '')
-                p_fc = getattr(part, 'function_call', None) if not isinstance(part, dict) else part.get('function_call', None)
-
-                if p_text:
-                    thought += str(p_text) + "\n"
-                if p_fc:
-                    if isinstance(p_fc, dict):
-                        fc_name = p_fc.get('name', '')
-                        fc_args = p_fc.get('args', {})
-                    else:
-                        fc_name = getattr(p_fc, 'name', '')
-                        fc_args = getattr(p_fc, 'args', {})
-                        if hasattr(fc_args, 'to_dict'):
-                            fc_args = fc_args.to_dict()
-                        elif not isinstance(fc_args, dict):
-                            fc_args = dict(fc_args) if fc_args else {}
-                    function_calls.append({'name': fc_name, 'args': fc_args})
-
-            for fc in function_calls:
-                step_counter += 1
-                shot_name = f"{step_counter:03d}_{fc['name']}.png" if step_counter <= len(step_screenshots) else None
-                current_step = {
-                    "step_number": step_counter,
-                    "action": fc['name'],
-                    "args": fc['args'],
-                    "thought": thought.strip(),
-                    "url": None,
-                    "screenshot": shot_name
-                }
-                steps.append(current_step)
-
-        elif role == 'user' and current_step is not None:
-            for part in parts:
-                p_fr = getattr(part, 'function_response', None) if not isinstance(part, dict) else part.get('function_response', None)
-                if p_fr:
-                    resp = getattr(p_fr, 'response', {}) if not isinstance(p_fr, dict) else p_fr.get('response', {})
-                    if isinstance(resp, dict) and 'url' in resp:
-                        current_step['url'] = resp['url']
-
-    return steps
+# (functions _run_agent_in_process and format_history_steps were moved to backend/agent/subprocess_runner.py)
 
 
 def execute_rollout(rollout_id: str, store, worker_slot: int = 0) -> None:
@@ -252,70 +161,44 @@ def execute_rollout(rollout_id: str, store, worker_slot: int = 0) -> None:
         # ---- agent execution --------------------------------------------
         _update(status=RolloutStatus.RUNNING)
 
-        import multiprocessing
-        import queue
-        from backend.configs import DEFAULT_MODEL_NAME, DEFAULT_SCREEN_SIZE
-        
-        ctx = multiprocessing.get_context("spawn")
-        q = ctx.Queue()
-        
-        p = ctx.Process(
-            target=_run_agent_in_process, 
-            args=(q, task_data["task"], metabase_url, DEFAULT_MODEL_NAME, DEFAULT_SCREEN_SIZE)
-        )
-        p.start()
+        from backend.agent.supervisor import run_agent_subprocess, AgentExecutionTimeout
+        from backend.configs import DEFAULT_MODEL_NAME
 
         try:
-            agent_out_data = q.get(timeout=AGENT_TIMEOUT)
+            agent_out_data = run_agent_subprocess(
+                task_prompt=task_data["task"],
+                initial_url=metabase_url,
+                model_name=DEFAULT_MODEL_NAME,
+                artifact_dir=str(artifact_dir),
+                timeout_seconds=AGENT_TIMEOUT,
+            )
             if not agent_out_data.get("success"):
                 primary_error_type = ErrorType.AGENT_ERROR
                 primary_error_stage = "agent_execution"
                 primary_error_message = agent_out_data.get("error", "Unknown error")
-                logger.error(f"[{project_name}] Agent error from process: {primary_error_message}\n{agent_out_data.get('traceback', '')}")
+                logger.error(f"[{project_name}] Agent error from process: {primary_error_message}")
                 raise RuntimeError(primary_error_message)
-        except queue.Empty:
-            # Cancel the process and guarantee all Chrome handles die
-            p.terminate()
-            p.join(timeout=2)
-            if p.is_alive():
-                p.kill()
-            
+        except AgentExecutionTimeout:
             primary_error_type = ErrorType.AGENT_TIMEOUT
             primary_error_stage = "agent_execution"
             primary_error_message = f"Agent exceeded {AGENT_TIMEOUT}s"
             status = RolloutStatus.TIMEOUT
             termination_reason = "agent_timeout"
             raise TimeoutError(primary_error_message)
-        except TimeoutError:
-            raise
         except Exception as e:
             if primary_error_type is None:
                 primary_error_type = ErrorType.AGENT_ERROR
                 primary_error_stage = "agent_execution"
                 primary_error_message = str(e)
-            logger.error(f"[{project_name}] Agent queue get error: {e}\n{traceback.format_exc()}")
+            logger.error(f"[{project_name}] Agent execution error: {e}\n{traceback.format_exc()}")
             raise
 
         agent_claim = agent_out_data.get("agent_claim", "")
-        step_screenshots = agent_out_data.get("step_screenshots", [])
-        formatted_steps = agent_out_data.get("steps", [])
-
-        shot_dir = artifact_dir / "screenshots"
-        shot_dir.mkdir(exist_ok=True)
-        shot_names = []
-        for idx, (action_name, img_data) in enumerate(step_screenshots, 1):
-            if img_data:
-                name = f"{idx:03d}_{action_name}.png"
-                with open(shot_dir / name, "wb") as f:
-                    f.write(img_data)
-                shot_names.append(name)
-        screenshots = shot_names
-
-        transcript_data = formatted_steps
+        screenshots = agent_out_data.get("screenshots", [])
+        transcript = agent_out_data.get("steps", [])
 
         with open(artifact_dir / "transcript.json", "w", encoding="utf-8") as f:
-            json.dump(transcript_data, f, default=str, indent=2)
-        transcript = transcript_data
+            json.dump(transcript, f, default=str, indent=2)
 
         # ---- grading ----------------------------------------------------
         _update(status=RolloutStatus.GRADING)
