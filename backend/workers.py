@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from typing import List
 
 from backend.models import Job, JobStatus, Rollout, RolloutStatus
@@ -19,7 +20,7 @@ from backend.configs import MAX_CONCURRENT_ROLLOUTS
 logger = logging.getLogger(__name__)
 
 
-async def _worker(queue: asyncio.Queue, store: SQLiteStore, slot: int) -> None:
+async def _worker(queue: asyncio.Queue, store: SQLiteStore, slot: int, executor: ThreadPoolExecutor) -> None:
     """A single worker that drains rollouts from the queue until exhausted."""
     while True:
         try:
@@ -42,7 +43,7 @@ async def _worker(queue: asyncio.Queue, store: SQLiteStore, slot: int) -> None:
             # Pass worker slot so the runner assigns a unique port.
             from backend.rollout.runner import execute_rollout
             loop = asyncio.get_event_loop()
-            await loop.run_in_executor(None, execute_rollout, rollout_id, store, slot)
+            await loop.run_in_executor(executor, execute_rollout, rollout_id, store, slot)
 
         except Exception as exc:
             # Exception boundary: one rollout failure must never kill sibling workers.
@@ -70,21 +71,31 @@ async def run_job(job: Job, rollouts: List[Rollout], store: SQLiteStore) -> None
     Populate the queue with rollout IDs and spin up MAX_CONCURRENT_ROLLOUTS workers.
     Returns after all rollouts have been processed.
     Runs as an asyncio background task.
+
+    Uses a dedicated ThreadPoolExecutor sized to the worker count so that
+    blocking rollout threads are isolated from the default executor and
+    cannot starve the asyncio event loop's own thread pool.
     """
     queue: asyncio.Queue = asyncio.Queue()
     for rollout in rollouts:
         await queue.put(rollout.id)
 
     n_workers = min(MAX_CONCURRENT_ROLLOUTS, len(rollouts))
-    workers = [
-        asyncio.create_task(_worker(queue, store, slot=i))
-        for i in range(n_workers)
-    ]
 
-    await queue.join()
+    # Use a dedicated, bounded ThreadPoolExecutor for this job.
+    # This prevents SQLite WAL contention by ensuring at most n_workers
+    # threads ever touch the database concurrently, and scopes the threads
+    # tightly to this job's lifetime.
+    with ThreadPoolExecutor(max_workers=n_workers, thread_name_prefix=f"rollout-{job.id[:8]}") as executor:
+        workers = [
+            asyncio.create_task(_worker(queue, store, slot=i, executor=executor))
+            for i in range(n_workers)
+        ]
 
-    for w in workers:
-        w.cancel()
-    await asyncio.gather(*workers, return_exceptions=True)
+        await queue.join()
+
+        for w in workers:
+            w.cancel()
+        await asyncio.gather(*workers, return_exceptions=True)
 
     logger.info(f"Job {job.id} finished — all {len(rollouts)} rollouts processed")

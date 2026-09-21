@@ -1,0 +1,7 @@
+INFO:     Will watch for changes in these directories: ['/Users/triansh/Desktop/deeptune-hack']
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     Started reloader process [33847] using WatchFiles
+INFO:     Started server process [33850]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     127.0.0.1:52437 - "GET /api/jobs/history HTTP/1.1" 200 OK

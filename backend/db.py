@@ -7,6 +7,7 @@ from __future__ import annotations
 import json
 import logging
 import sqlite3
+import threading
 from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Union
@@ -18,23 +19,31 @@ logger = logging.getLogger(__name__)
 
 
 class SQLiteStore:
-    """Synchronous/Thread-safe SQLite database manager for jobs, rollouts, and tasks."""
+    """
+    Thread-safe SQLite store using a single shared connection.
+
+    A single connection is opened at init time and shared across all threads
+    (check_same_thread=False).  All writes are serialised through _write_lock
+    (RLock so nested write calls don't deadlock).  Reads can happen freely
+    since WAL mode allows concurrent reads even on a shared connection.
+    """
 
     def __init__(self, db_path: Optional[Union[Path, str]] = None):
         self.db_path = Path(db_path) if db_path else SQLITE_DB_PATH
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        # Single connection shared by all threads.
+        self._conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
+        self._conn.row_factory = sqlite3.Row
+        # Reentrant so nested write paths (e.g. update_rollout → _recompute_job_progress)
+        # can acquire the lock without deadlocking.
+        self._write_lock = threading.RLock()
         self._init_db()
-
-    def _get_connection(self) -> sqlite3.Connection:
-        conn = sqlite3.connect(str(self.db_path), timeout=30.0, check_same_thread=False)
-        conn.row_factory = sqlite3.Row
-        return conn
 
     def _init_db(self) -> None:
         """Initialize SQLite database tables and set WAL mode."""
         try:
-            with self._get_connection() as conn:
-                cursor = conn.cursor()
+            with self._write_lock:
+                cursor = self._conn.cursor()
                 # Performance settings
                 cursor.execute("PRAGMA journal_mode=WAL;")
                 cursor.execute("PRAGMA synchronous=NORMAL;")
@@ -108,7 +117,7 @@ class SQLiteStore:
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_rollouts_status ON rollouts(status);")
                 cursor.execute("CREATE INDEX IF NOT EXISTS idx_jobs_created_at ON jobs(created_at DESC);")
 
-                conn.commit()
+                self._conn.commit()
                 logger.info(f"Initialized SQLite database schema at {self.db_path}")
         except Exception as e:
             logger.error(f"Failed to initialize SQLite database at {self.db_path}: {e}")
@@ -121,8 +130,8 @@ class SQLiteStore:
     def save_task(self, task: Task) -> None:
         expected_ans = json.dumps(task.expected_answer) if not isinstance(task.expected_answer, str) else task.expected_answer
         now_str = datetime.utcnow().isoformat()
-        with self._get_connection() as conn:
-            conn.execute(
+        with self._write_lock:
+            self._conn.execute(
                 """
                 INSERT INTO tasks (task_id, prompt, expected_answer, created_at)
                 VALUES (?, ?, ?, ?)
@@ -132,11 +141,11 @@ class SQLiteStore:
                 """,
                 (task.id, task.prompt, expected_ans, now_str)
             )
-            conn.commit()
+            self._conn.commit()
 
     def list_tasks(self) -> List[Task]:
-        with self._get_connection() as conn:
-            rows = conn.execute("SELECT task_id, prompt, expected_answer FROM tasks").fetchall()
+        with self._write_lock:
+            rows = self._conn.execute("SELECT task_id, prompt, expected_answer FROM tasks").fetchall()
             tasks = []
             for r in rows:
                 try:
@@ -155,8 +164,8 @@ class SQLiteStore:
         tasks_json = json.dumps([{"task_id": t.id, "task": t.prompt, "expected_answer": t.expected_answer} for t in job.tasks])
         rollout_ids_json = json.dumps(job.rollout_ids)
 
-        with self._get_connection() as conn:
-            conn.execute(
+        with self._write_lock:
+            self._conn.execute(
                 """
                 INSERT INTO jobs (
                     job_id, status, task_file, attempts_per_task, created_at, started_at, completed_at,
@@ -182,18 +191,18 @@ class SQLiteStore:
                     rollout_ids_json, tasks_json
                 )
             )
-            conn.commit()
+            self._conn.commit()
 
     def get_job(self, job_id: str) -> Optional[Job]:
-        with self._get_connection() as conn:
-            row = conn.execute("SELECT * FROM jobs WHERE job_id = ?", (job_id,)).fetchone()
+        with self._write_lock:
+            row = self._conn.execute("SELECT * FROM jobs WHERE job_id = ?", (job_id,)).fetchone()
             if not row:
                 return None
             return self._row_to_job(row)
 
     def list_jobs(self) -> List[Job]:
-        with self._get_connection() as conn:
-            rows = conn.execute("SELECT * FROM jobs ORDER BY created_at DESC").fetchall()
+        with self._write_lock:
+            rows = self._conn.execute("SELECT * FROM jobs ORDER BY created_at DESC").fetchall()
             return [self._row_to_job(r) for r in rows]
 
     def _row_to_job(self, row: sqlite3.Row) -> Job:
@@ -251,8 +260,8 @@ class SQLiteStore:
         screenshots_json = json.dumps(rollout.screenshots) if rollout.screenshots is not None else "[]"
         transcript_json = json.dumps(rollout.transcript) if rollout.transcript is not None else "[]"
 
-        with self._get_connection() as conn:
-            conn.execute(
+        with self._write_lock:
+            self._conn.execute(
                 """
                 INSERT INTO rollouts (
                     rollout_id, job_id, task_id, attempt_number, status, reward, started_at, completed_at,
@@ -283,23 +292,23 @@ class SQLiteStore:
                     rollout.artifact_path, rollout.agent_claim, grader_json, screenshots_json, transcript_json
                 )
             )
-            conn.commit()
+            self._conn.commit()
 
     def get_rollout(self, rollout_id: str) -> Optional[Rollout]:
-        with self._get_connection() as conn:
-            row = conn.execute("SELECT * FROM rollouts WHERE rollout_id = ?", (rollout_id,)).fetchone()
+        with self._write_lock:
+            row = self._conn.execute("SELECT * FROM rollouts WHERE rollout_id = ?", (rollout_id,)).fetchone()
             if not row:
                 return None
             return self._row_to_rollout(row)
 
     def get_rollouts_for_job(self, job_id: str) -> List[Rollout]:
-        with self._get_connection() as conn:
-            rows = conn.execute("SELECT * FROM rollouts WHERE job_id = ? ORDER BY attempt_number ASC", (job_id,)).fetchall()
+        with self._write_lock:
+            rows = self._conn.execute("SELECT * FROM rollouts WHERE job_id = ? ORDER BY attempt_number ASC", (job_id,)).fetchall()
             return [self._row_to_rollout(r) for r in rows]
 
     def list_all_rollouts(self) -> List[Rollout]:
-        with self._get_connection() as conn:
-            rows = conn.execute("SELECT * FROM rollouts").fetchall()
+        with self._write_lock:
+            rows = self._conn.execute("SELECT * FROM rollouts").fetchall()
             return [self._row_to_rollout(r) for r in rows]
 
     def _row_to_rollout(self, row: sqlite3.Row) -> Rollout:
@@ -353,9 +362,9 @@ class SQLiteStore:
         )
 
     def count_jobs(self) -> int:
-        with self._get_connection() as conn:
-            row = conn.execute("SELECT COUNT(*) as cnt FROM jobs").fetchone()
-            return row["cnt"] if row else 0
+        with self._write_lock:
+            row = self._conn.execute("SELECT COUNT(*) as cnt FROM jobs").fetchone()
+        return row["cnt"] if row else 0
 
     # ------------------------------------------------------------------
     # Business Logic / Sync API Methods

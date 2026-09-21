@@ -51,6 +51,36 @@ def _port_for_slot(slot: int) -> tuple[int, int]:
     """Return (metabase_port, postgres_port) for a worker slot index."""
     return ROLLOUT_PORT_BASE + slot, ROLLOUT_PORT_BASE + 100 + slot
 
+def _run_agent_in_process(q, task_prompt: str, metabase_url: str, model_name: str, screen_size: tuple):
+    """Executes the agent in a dedicated process and returns strictly JSON-picklable parsed data."""
+    try:
+        from backend.agent.runner import AgentRunner
+        import traceback
+        agent_runner = AgentRunner(model_name=model_name)
+        agent_out = agent_runner.run(task_prompt, metabase_url, screen_size)
+        
+        history = agent_out.get("history", [])
+        step_screenshots = agent_out.get("screenshots", [])
+        agent_claim = agent_out.get("agent_claim", "")
+        
+        # Serialize history BEFORE putting it in the inter-process queue
+        # format_history_steps strips out complex objects (e.g. from Google GenAI)
+        steps = format_history_steps(history, step_screenshots)
+        
+        q.put({
+            "success": True,
+            "agent_claim": agent_claim,
+            "steps": steps,
+            "step_screenshots": step_screenshots
+        })
+    except Exception as e:
+        import traceback
+        q.put({
+            "success": False, 
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        })
+
 
 def format_history_steps(history, step_screenshots):
     """
@@ -215,22 +245,41 @@ def execute_rollout(rollout_id: str, store, worker_slot: int = 0) -> None:
 
         # ---- agent execution --------------------------------------------
         _update(status=RolloutStatus.RUNNING)
-        from backend.agent.runner import AgentRunner
-        agent_runner = AgentRunner(model_name=DEFAULT_MODEL_NAME)
+
+        import multiprocessing
+        import queue
+        from backend.configs import DEFAULT_MODEL_NAME, DEFAULT_SCREEN_SIZE
+        
+        ctx = multiprocessing.get_context("spawn")
+        q = ctx.Queue()
+        
+        p = ctx.Process(
+            target=_run_agent_in_process, 
+            args=(q, task_data["task"], metabase_url, DEFAULT_MODEL_NAME, DEFAULT_SCREEN_SIZE)
+        )
+        p.start()
 
         try:
-            with ThreadPoolExecutor(max_workers=1) as tpe:
-                fut = tpe.submit(agent_runner.run, task_data["task"], metabase_url)
-                try:
-                    agent_out = fut.result(timeout=AGENT_TIMEOUT)
-                except FuturesTimeout:
-                    fut.cancel()
-                    primary_error_type = ErrorType.AGENT_TIMEOUT
-                    primary_error_stage = "agent_execution"
-                    primary_error_message = f"Agent exceeded {AGENT_TIMEOUT}s"
-                    status = RolloutStatus.TIMEOUT
-                    termination_reason = "agent_timeout"
-                    raise TimeoutError(primary_error_message)
+            agent_out_data = q.get(timeout=AGENT_TIMEOUT)
+            if not agent_out_data.get("success"):
+                primary_error_type = ErrorType.AGENT_ERROR
+                primary_error_stage = "agent_execution"
+                primary_error_message = agent_out_data.get("error", "Unknown error")
+                logger.error(f"[{project_name}] Agent error from process: {primary_error_message}\n{agent_out_data.get('traceback', '')}")
+                raise RuntimeError(primary_error_message)
+        except queue.Empty:
+            # Cancel the process and guarantee all Chrome handles die
+            p.terminate()
+            p.join(timeout=2)
+            if p.is_alive():
+                p.kill()
+            
+            primary_error_type = ErrorType.AGENT_TIMEOUT
+            primary_error_stage = "agent_execution"
+            primary_error_message = f"Agent exceeded {AGENT_TIMEOUT}s"
+            status = RolloutStatus.TIMEOUT
+            termination_reason = "agent_timeout"
+            raise TimeoutError(primary_error_message)
         except TimeoutError:
             raise
         except Exception as e:
@@ -238,12 +287,12 @@ def execute_rollout(rollout_id: str, store, worker_slot: int = 0) -> None:
                 primary_error_type = ErrorType.AGENT_ERROR
                 primary_error_stage = "agent_execution"
                 primary_error_message = str(e)
-            logger.error(f"[{project_name}] Agent error: {e}\n{traceback.format_exc()}")
+            logger.error(f"[{project_name}] Agent queue get error: {e}\n{traceback.format_exc()}")
             raise
 
-        agent_claim = agent_out.get("agent_claim", "")
-        history = agent_out.get("history", [])
-        step_screenshots = agent_out.get("screenshots", [])
+        agent_claim = agent_out_data.get("agent_claim", "")
+        step_screenshots = agent_out_data.get("step_screenshots", [])
+        formatted_steps = agent_out_data.get("steps", [])
 
         shot_dir = artifact_dir / "screenshots"
         shot_dir.mkdir(exist_ok=True)
@@ -256,8 +305,7 @@ def execute_rollout(rollout_id: str, store, worker_slot: int = 0) -> None:
                 shot_names.append(name)
         screenshots = shot_names
 
-        formatted_steps = format_history_steps(history, step_screenshots)
-        transcript_data = formatted_steps if formatted_steps else history
+        transcript_data = formatted_steps
 
         with open(artifact_dir / "transcript.json", "w", encoding="utf-8") as f:
             json.dump(transcript_data, f, default=str, indent=2)
@@ -353,6 +401,17 @@ def execute_rollout(rollout_id: str, store, worker_slot: int = 0) -> None:
         except Exception as we:
             logger.error(f"Could not write result.json: {we}")
 
+        # ----- Close per-rollout file handler FIRST, before _update() -------
+        # This guarantees the FileHandler FD is released even if _update() raises
+        # (e.g. when the process is already at the OS open-file limit).  A leaked
+        # handler attached to the root logger would otherwise accumulate across
+        # rollouts and eventually exhaust the file descriptor table.
+        try:
+            root_logger.removeHandler(log_handler)
+            log_handler.close()
+        except Exception:
+            pass
+
         _update(
             status=status,
             reward=reward,
@@ -369,12 +428,6 @@ def execute_rollout(rollout_id: str, store, worker_slot: int = 0) -> None:
             screenshots=screenshots,
             agent_claim=agent_claim,
         )
-
-        try:
-            root_logger.removeHandler(log_handler)
-            log_handler.close()
-        except Exception:
-            pass
 
     logger.info(
         f"[{project_name}] {task_id} attempt {attempt} → {status} | reward={reward} | {duration}s"
