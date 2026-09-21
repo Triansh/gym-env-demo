@@ -70,13 +70,13 @@ async def get_config():
     }
 
 @app.get("/api/jobs")
-async def list_jobs():
+def list_jobs():
     jobs = store.list_jobs()
     return [j.to_dict() for j in jobs]
 
 
 @app.get("/api/jobs/history")
-async def get_jobs_history(
+def get_jobs_history(
     status: Optional[str] = None,
     search: Optional[str] = None,
     limit: Optional[int] = None,
@@ -172,7 +172,7 @@ async def create_new_job(
 
 
 @app.get("/api/jobs/{job_id}/tasks.json")
-async def get_job_tasks_json(job_id: str):
+def get_job_tasks_json(job_id: str):
     """Retrieve the original tasks.json file submitted for a specific job."""
     task_file_path = ARTIFACTS_ROOT / job_id / "tasks.json"
     if task_file_path.exists():
@@ -190,7 +190,7 @@ async def get_job_tasks_json(job_id: str):
 
 
 @app.get("/api/jobs/{job_id}")
-async def get_job(job_id: str):
+def get_job(job_id: str):
     job = store.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -198,7 +198,7 @@ async def get_job(job_id: str):
 
 
 @app.get("/api/jobs/{job_id}/rollouts")
-async def get_job_rollouts(job_id: str):
+def get_job_rollouts(job_id: str):
     job = store.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -207,7 +207,7 @@ async def get_job_rollouts(job_id: str):
 
 
 @app.get("/api/jobs/{job_id}/tasks")
-async def get_job_tasks(job_id: str):
+def get_job_tasks(job_id: str):
     """Per-task aggregated summaries (for the frontend task view)."""
     job = store.get_job(job_id)
     if not job:
@@ -268,7 +268,7 @@ async def get_job_tasks(job_id: str):
 
 
 @app.delete("/api/jobs/{job_id}")
-async def cancel_job(job_id: str):
+def cancel_job(job_id: str):
     job = store.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job not found")
@@ -288,7 +288,7 @@ async def cancel_job(job_id: str):
 # ---------------------------------------------------------------------------
 
 @app.get("/api/rollouts/{rollout_id}")
-async def get_rollout(rollout_id: str):
+def get_rollout(rollout_id: str):
     rollout = store.get_rollout(rollout_id)
     if not rollout:
         raise HTTPException(status_code=404, detail="Rollout not found")
@@ -296,7 +296,7 @@ async def get_rollout(rollout_id: str):
 
 
 @app.get("/api/rollouts/{rollout_id}/screenshots")
-async def get_rollout_screenshots(rollout_id: str):
+def get_rollout_screenshots(rollout_id: str):
     rollout = store.get_rollout(rollout_id)
     if not rollout:
         raise HTTPException(status_code=404, detail="Rollout not found")

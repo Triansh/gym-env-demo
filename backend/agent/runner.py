@@ -6,6 +6,10 @@ from dotenv import load_dotenv
 
 load_dotenv(override=True)
 
+# Silence third-party verbose loggers (google_genai, httpx)
+logging.getLogger("google_genai").setLevel(logging.WARNING)
+logging.getLogger("httpx").setLevel(logging.WARNING)
+
 CUP_PATH = Path(__file__).resolve().parent.parent.parent / "computer-use-preview"
 if str(CUP_PATH) not in sys.path:
     sys.path.insert(0, str(CUP_PATH))
@@ -51,6 +55,7 @@ class AgentRunner:
 
         agent_claim = ""
         history = []
+        verbose = os.environ.get("VERBOSE_AGENT", "0").lower() in ("true", "1")
 
         try:
             with env as browser_computer:
@@ -58,7 +63,7 @@ class AgentRunner:
                     browser_computer=browser_computer,
                     query=full_prompt,
                     model_name=self.model_name,
-                    verbose=True
+                    verbose=verbose
                 )
                 agent.agent_loop()
                 agent_claim = agent.final_reasoning or ""
