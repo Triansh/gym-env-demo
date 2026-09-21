@@ -1,0 +1,1511 @@
+INFO:     Started server process [40450]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:56242 - "GET /api/jobs/6e500f51-ae32-4473-b033-4e609b7780ba HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56243 - "GET /api/jobs/6e500f51-ae32-4473-b033-4e609b7780ba/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56248 - "POST /api/jobs HTTP/1.1" 201 Created
+INFO:backend.environment.manager:[mb_2cf5c07a] Destroying environment...
+INFO:backend.environment.manager:[mb_a9fed952] Destroying environment...
+INFO:backend.api:Created job 22302eec-6745-4fab-993a-6d04135a1d79 with 2 rollouts
+INFO:     127.0.0.1:56250 - "POST /api/jobs HTTP/1.1" 201 Created
+INFO:backend.workers:Job 22302eec-6745-4fab-993a-6d04135a1d79 enqueued 2 rollouts to global pool
+INFO:backend.environment.manager:[mb_43643e40] Destroying environment...
+INFO:backend.environment.manager:[mb_f62d90d8] Destroying environment...
+INFO:backend.api:Created job eb546c55-6d07-4a51-bb00-cc9755546359 with 2 rollouts
+INFO:     127.0.0.1:56253 - "POST /api/jobs HTTP/1.1" 201 Created
+INFO:backend.workers:Job eb546c55-6d07-4a51-bb00-cc9755546359 enqueued 2 rollouts to global pool
+INFO:backend.environment.manager:[mb_78755e90] Destroying environment...
+INFO:backend.environment.manager:[mb_f62d90d8] Environment destroyed and volumes purged.
+INFO:backend.environment.manager:[mb_43643e40] Environment destroyed and volumes purged.
+INFO:backend.environment.manager:[mb_2cf5c07a] Environment destroyed and volumes purged.
+INFO:backend.environment.manager:[mb_78755e90] Environment destroyed and volumes purged.
+INFO:backend.environment.manager:[mb_a9fed952] Environment destroyed and volumes purged.
+INFO:backend.environment.manager:[mb_43643e40] Starting containers (Metabase:3102, PG:3202)...
+INFO:backend.environment.manager:[mb_f62d90d8] Starting containers (Metabase:3103, PG:3203)...
+INFO:backend.environment.manager:[mb_2cf5c07a] Starting containers (Metabase:3101, PG:3201)...
+INFO:backend.environment.manager:[mb_78755e90] Starting containers (Metabase:3104, PG:3204)...
+INFO:backend.environment.manager:[mb_a9fed952] Starting containers (Metabase:3100, PG:3200)...
+INFO:backend.environment.manager:[mb_f62d90d8] Containers started.
+INFO:backend.environment.health:Waiting for Metabase at http://localhost:3103 (timeout=180s)...
+INFO:backend.environment.manager:[mb_78755e90] Containers started.
+INFO:backend.environment.health:Waiting for Metabase at http://localhost:3104 (timeout=180s)...
+INFO:backend.environment.manager:[mb_43643e40] Containers started.
+INFO:backend.environment.health:Waiting for Metabase at http://localhost:3102 (timeout=180s)...
+INFO:backend.environment.manager:[mb_2cf5c07a] Containers started.
+INFO:backend.environment.health:Waiting for Metabase at http://localhost:3101 (timeout=180s)...
+INFO:backend.environment.manager:[mb_a9fed952] Containers started.
+INFO:backend.environment.health:Waiting for Metabase at http://localhost:3100 (timeout=180s)...
+INFO:backend.environment.health:Metabase is healthy and ready!
+INFO:backend.environment.health:Metabase is healthy and ready!
+INFO:backend.environment.health:Metabase is healthy and ready!
+INFO:backend.environment.health:Metabase is healthy and ready!
+INFO:backend.environment.health:Metabase is healthy and ready!
+INFO:backend.agent.runner:Starting agent run against http://localhost:3103 using model gemini-3-flash-preview (viewport: (854, 480))...
+INFO:backend.agent.runner:Starting agent run against http://localhost:3104 using model gemini-3-flash-preview (viewport: (854, 480))...
+INFO:backend.agent.runner:Starting agent run against http://localhost:3102 using model gemini-3-flash-preview (viewport: (854, 480))...
+INFO:backend.agent.runner:Starting agent run against http://localhost:3101 using model gemini-3-flash-preview (viewport: (854, 480))...
+INFO:backend.agent.runner:Starting agent run against http://localhost:3100 using model gemini-3-flash-preview (viewport: (854, 480))...
+INFO:     127.0.0.1:56492 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56500 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56507 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56515 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56520 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56540 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56552 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56560 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56570 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56593 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56600 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56607 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56616 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56624 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56636 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56645 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56652 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56676 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56698 - "GET /api/config HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56698 - "GET /api/jobs/6e500f51-ae32-4473-b033-4e609b7780ba HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56700 - "GET /api/jobs/6e500f51-ae32-4473-b033-4e609b7780ba/tasks HTTP/1.1" 200 OK
+Creating session...
+Started local playwright.
+INFO:backend.environment.manager:[mb_a9fed952] Destroying environment...
+INFO:     127.0.0.1:56700 - "GET /api/jobs/6e500f51-ae32-4473-b033-4e609b7780ba HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56698 - "GET /api/jobs/6e500f51-ae32-4473-b033-4e609b7780ba/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56698 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:backend.environment.manager:[mb_a9fed952] Environment destroyed and volumes purged.
+INFO:backend.rollout.runner:[mb_a9fed952] problem1 attempt 1 → RolloutStatus.PASSED | reward=1.0 | 191.07s
+INFO:backend.environment.manager:[mb_cf9ea918] Destroying environment...
+INFO:backend.environment.manager:[mb_cf9ea918] Environment destroyed and volumes purged.
+INFO:backend.environment.manager:[mb_cf9ea918] Starting containers (Metabase:3100, PG:3200)...
+INFO:     127.0.0.1:56698 - "GET /api/jobs/134398e5-e3c9-4b83-9d95-152d9265344e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56698 - "GET /api/jobs/134398e5-e3c9-4b83-9d95-152d9265344e HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56700 - "GET /api/jobs/134398e5-e3c9-4b83-9d95-152d9265344e/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56700 - "GET /api/rollouts/a9fed952-c855-49c2-ba76-543f2d0d7813 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56709 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/a9fed952-c855-49c2-ba76-543f2d0d7813/screenshots/001_open_web_browser.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56711 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/a9fed952-c855-49c2-ba76-543f2d0d7813/screenshots/002_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56713 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/a9fed952-c855-49c2-ba76-543f2d0d7813/screenshots/003_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56715 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/a9fed952-c855-49c2-ba76-543f2d0d7813/screenshots/004_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56717 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/a9fed952-c855-49c2-ba76-543f2d0d7813/screenshots/005_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56718 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/a9fed952-c855-49c2-ba76-543f2d0d7813/screenshots/006_scroll_document.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56709 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/a9fed952-c855-49c2-ba76-543f2d0d7813/screenshots/007_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56711 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/a9fed952-c855-49c2-ba76-543f2d0d7813/screenshots/008_wait_5_seconds.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56715 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/a9fed952-c855-49c2-ba76-543f2d0d7813/screenshots/009_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56718 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/a9fed952-c855-49c2-ba76-543f2d0d7813/screenshots/010_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56717 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/a9fed952-c855-49c2-ba76-543f2d0d7813/screenshots/011_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56713 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/a9fed952-c855-49c2-ba76-543f2d0d7813/screenshots/012_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56709 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/a9fed952-c855-49c2-ba76-543f2d0d7813/screenshots/013_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56711 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/a9fed952-c855-49c2-ba76-543f2d0d7813/screenshots/014_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56715 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/a9fed952-c855-49c2-ba76-543f2d0d7813/screenshots/016_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56718 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/a9fed952-c855-49c2-ba76-543f2d0d7813/screenshots/015_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56713 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/a9fed952-c855-49c2-ba76-543f2d0d7813/screenshots/017_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56717 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/a9fed952-c855-49c2-ba76-543f2d0d7813/screenshots/018_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56709 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/a9fed952-c855-49c2-ba76-543f2d0d7813/screenshots/019_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56711 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/a9fed952-c855-49c2-ba76-543f2d0d7813/screenshots/020_click_at.png HTTP/1.1" 200 OK
+Creating session...
+Started local playwright.
+INFO:backend.environment.manager:[mb_2cf5c07a] Destroying environment...
+INFO:backend.environment.manager:[mb_2cf5c07a] Environment destroyed and volumes purged.
+INFO:backend.rollout.runner:[mb_2cf5c07a] problem1 attempt 2 → RolloutStatus.PASSED | reward=1.0 | 196.36s
+INFO:     127.0.0.1:56700 - "GET /api/rollouts/2cf5c07a-08b6-42e4-9f56-ae8aea94ed95 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56711 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/2cf5c07a-08b6-42e4-9f56-ae8aea94ed95/screenshots/001_open_web_browser.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56709 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/2cf5c07a-08b6-42e4-9f56-ae8aea94ed95/screenshots/002_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56713 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/2cf5c07a-08b6-42e4-9f56-ae8aea94ed95/screenshots/006_scroll_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56715 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/2cf5c07a-08b6-42e4-9f56-ae8aea94ed95/screenshots/003_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56718 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/2cf5c07a-08b6-42e4-9f56-ae8aea94ed95/screenshots/005_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56717 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/2cf5c07a-08b6-42e4-9f56-ae8aea94ed95/screenshots/004_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56717 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/2cf5c07a-08b6-42e4-9f56-ae8aea94ed95/screenshots/007_scroll_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56711 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/2cf5c07a-08b6-42e4-9f56-ae8aea94ed95/screenshots/008_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56713 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/2cf5c07a-08b6-42e4-9f56-ae8aea94ed95/screenshots/010_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56709 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/2cf5c07a-08b6-42e4-9f56-ae8aea94ed95/screenshots/009_wait_5_seconds.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56718 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/2cf5c07a-08b6-42e4-9f56-ae8aea94ed95/screenshots/011_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56715 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/2cf5c07a-08b6-42e4-9f56-ae8aea94ed95/screenshots/012_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56717 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/2cf5c07a-08b6-42e4-9f56-ae8aea94ed95/screenshots/013_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56711 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/2cf5c07a-08b6-42e4-9f56-ae8aea94ed95/screenshots/014_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56718 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/2cf5c07a-08b6-42e4-9f56-ae8aea94ed95/screenshots/015_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56713 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/2cf5c07a-08b6-42e4-9f56-ae8aea94ed95/screenshots/017_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56709 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/2cf5c07a-08b6-42e4-9f56-ae8aea94ed95/screenshots/016_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56715 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/2cf5c07a-08b6-42e4-9f56-ae8aea94ed95/screenshots/018_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56717 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/2cf5c07a-08b6-42e4-9f56-ae8aea94ed95/screenshots/019_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56711 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/2cf5c07a-08b6-42e4-9f56-ae8aea94ed95/screenshots/020_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56718 - "GET /api/artifacts/134398e5-e3c9-4b83-9d95-152d9265344e/2cf5c07a-08b6-42e4-9f56-ae8aea94ed95/screenshots/021_click_at.png HTTP/1.1" 200 OK
+INFO:backend.environment.manager:[mb_cf9ea918] Containers started.
+INFO:backend.environment.health:Waiting for Metabase at http://localhost:3100 (timeout=180s)...
+INFO:     127.0.0.1:56734 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56734 - "GET /api/jobs/eb546c55-6d07-4a51-bb00-cc9755546359 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56734 - "GET /api/jobs/eb546c55-6d07-4a51-bb00-cc9755546359 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56742 - "GET /api/jobs/eb546c55-6d07-4a51-bb00-cc9755546359/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56742 - "GET /api/rollouts/78755e90-83cc-41f3-b508-781c900cfb39 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56742 - "GET /api/rollouts/cf9ea918-aeb0-4ef0-9a65-7e4741061b61 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56742 - "GET /api/rollouts/78755e90-83cc-41f3-b508-781c900cfb39 HTTP/1.1" 200 OK
+Creating session...
+Started local playwright.
+INFO:backend.environment.manager:[mb_f62d90d8] Destroying environment...
+INFO:backend.environment.manager:[mb_f62d90d8] Environment destroyed and volumes purged.
+INFO:backend.rollout.runner:[mb_f62d90d8] problem1 attempt 2 → RolloutStatus.PASSED | reward=1.0 | 207.86s
+INFO:     127.0.0.1:56742 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:backend.environment.health:Metabase is healthy and ready!
+Creating session...
+Started local playwright.
+INFO:backend.environment.manager:[mb_43643e40] Destroying environment...
+INFO:backend.agent.runner:Starting agent run against http://localhost:3100 using model gemini-3-flash-preview (viewport: (854, 480))...
+INFO:backend.environment.manager:[mb_43643e40] Environment destroyed and volumes purged.
+INFO:backend.rollout.runner:[mb_43643e40] problem1 attempt 1 → RolloutStatus.PASSED | reward=1.0 | 210.69s
+INFO:     127.0.0.1:56742 - "GET /api/jobs/22302eec-6745-4fab-993a-6d04135a1d79 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56742 - "GET /api/jobs/22302eec-6745-4fab-993a-6d04135a1d79 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56773 - "GET /api/jobs/22302eec-6745-4fab-993a-6d04135a1d79/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56773 - "GET /api/rollouts/43643e40-5e1f-43a0-ad4b-c5b6b5043a31 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56776 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/43643e40-5e1f-43a0-ad4b-c5b6b5043a31/screenshots/001_open_web_browser.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56778 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/43643e40-5e1f-43a0-ad4b-c5b6b5043a31/screenshots/002_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56780 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/43643e40-5e1f-43a0-ad4b-c5b6b5043a31/screenshots/003_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56782 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/43643e40-5e1f-43a0-ad4b-c5b6b5043a31/screenshots/004_wait_5_seconds.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56784 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/43643e40-5e1f-43a0-ad4b-c5b6b5043a31/screenshots/005_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56785 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/43643e40-5e1f-43a0-ad4b-c5b6b5043a31/screenshots/006_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56780 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/43643e40-5e1f-43a0-ad4b-c5b6b5043a31/screenshots/007_scroll_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56784 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/43643e40-5e1f-43a0-ad4b-c5b6b5043a31/screenshots/011_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56776 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/43643e40-5e1f-43a0-ad4b-c5b6b5043a31/screenshots/008_scroll_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56778 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/43643e40-5e1f-43a0-ad4b-c5b6b5043a31/screenshots/009_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56785 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/43643e40-5e1f-43a0-ad4b-c5b6b5043a31/screenshots/010_wait_5_seconds.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56782 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/43643e40-5e1f-43a0-ad4b-c5b6b5043a31/screenshots/012_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56780 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/43643e40-5e1f-43a0-ad4b-c5b6b5043a31/screenshots/013_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56776 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/43643e40-5e1f-43a0-ad4b-c5b6b5043a31/screenshots/014_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56784 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/43643e40-5e1f-43a0-ad4b-c5b6b5043a31/screenshots/015_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56778 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/43643e40-5e1f-43a0-ad4b-c5b6b5043a31/screenshots/016_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56785 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/43643e40-5e1f-43a0-ad4b-c5b6b5043a31/screenshots/017_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56782 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/43643e40-5e1f-43a0-ad4b-c5b6b5043a31/screenshots/018_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56784 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/43643e40-5e1f-43a0-ad4b-c5b6b5043a31/screenshots/019_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56780 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/43643e40-5e1f-43a0-ad4b-c5b6b5043a31/screenshots/020_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56778 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/43643e40-5e1f-43a0-ad4b-c5b6b5043a31/screenshots/021_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56785 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/43643e40-5e1f-43a0-ad4b-c5b6b5043a31/screenshots/022_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56773 - "GET /api/rollouts/f62d90d8-3204-438a-9cbe-7a8dc81a0ebb HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56780 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/f62d90d8-3204-438a-9cbe-7a8dc81a0ebb/screenshots/001_open_web_browser.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56776 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/f62d90d8-3204-438a-9cbe-7a8dc81a0ebb/screenshots/006_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56778 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/f62d90d8-3204-438a-9cbe-7a8dc81a0ebb/screenshots/002_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56784 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/f62d90d8-3204-438a-9cbe-7a8dc81a0ebb/screenshots/003_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56785 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/f62d90d8-3204-438a-9cbe-7a8dc81a0ebb/screenshots/004_wait_5_seconds.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56782 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/f62d90d8-3204-438a-9cbe-7a8dc81a0ebb/screenshots/005_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56782 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/f62d90d8-3204-438a-9cbe-7a8dc81a0ebb/screenshots/007_scroll_document.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56776 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/f62d90d8-3204-438a-9cbe-7a8dc81a0ebb/screenshots/009_wait_5_seconds.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56785 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/f62d90d8-3204-438a-9cbe-7a8dc81a0ebb/screenshots/012_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56780 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/f62d90d8-3204-438a-9cbe-7a8dc81a0ebb/screenshots/010_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56778 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/f62d90d8-3204-438a-9cbe-7a8dc81a0ebb/screenshots/011_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56784 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/f62d90d8-3204-438a-9cbe-7a8dc81a0ebb/screenshots/008_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56782 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/f62d90d8-3204-438a-9cbe-7a8dc81a0ebb/screenshots/013_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56784 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/f62d90d8-3204-438a-9cbe-7a8dc81a0ebb/screenshots/014_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56780 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/f62d90d8-3204-438a-9cbe-7a8dc81a0ebb/screenshots/015_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56778 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/f62d90d8-3204-438a-9cbe-7a8dc81a0ebb/screenshots/016_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56776 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/f62d90d8-3204-438a-9cbe-7a8dc81a0ebb/screenshots/017_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56785 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/f62d90d8-3204-438a-9cbe-7a8dc81a0ebb/screenshots/018_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56782 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/f62d90d8-3204-438a-9cbe-7a8dc81a0ebb/screenshots/019_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56784 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/f62d90d8-3204-438a-9cbe-7a8dc81a0ebb/screenshots/020_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56780 - "GET /api/artifacts/22302eec-6745-4fab-993a-6d04135a1d79/f62d90d8-3204-438a-9cbe-7a8dc81a0ebb/screenshots/021_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56798 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56811 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:backend.api:Created job 8d72eaca-c868-4a4f-a501-2026ba306e66 with 30 rollouts
+INFO:     127.0.0.1:56821 - "POST /api/jobs HTTP/1.1" 201 Created
+INFO:backend.workers:Job 8d72eaca-c868-4a4f-a501-2026ba306e66 enqueued 30 rollouts to global pool
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:backend.environment.manager:[mb_96e11d34] Destroying environment...
+INFO:backend.environment.manager:[mb_181f1cfd] Destroying environment...
+INFO:backend.environment.manager:[mb_1c8de9c3] Destroying environment...
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:backend.environment.manager:[mb_181f1cfd] Environment destroyed and volumes purged.
+INFO:backend.environment.manager:[mb_181f1cfd] Starting containers (Metabase:3102, PG:3202)...
+INFO:backend.environment.manager:[mb_96e11d34] Environment destroyed and volumes purged.
+INFO:backend.environment.manager:[mb_1c8de9c3] Environment destroyed and volumes purged.
+INFO:backend.environment.manager:[mb_96e11d34] Starting containers (Metabase:3101, PG:3201)...
+INFO:backend.environment.manager:[mb_1c8de9c3] Starting containers (Metabase:3103, PG:3203)...
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:backend.environment.manager:[mb_1c8de9c3] Containers started.
+INFO:backend.environment.health:Waiting for Metabase at http://localhost:3103 (timeout=180s)...
+INFO:backend.environment.manager:[mb_181f1cfd] Containers started.
+INFO:backend.environment.health:Waiting for Metabase at http://localhost:3102 (timeout=180s)...
+INFO:backend.environment.manager:[mb_96e11d34] Containers started.
+INFO:backend.environment.health:Waiting for Metabase at http://localhost:3101 (timeout=180s)...
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:backend.environment.health:Metabase is healthy and ready!
+INFO:backend.environment.health:Metabase is healthy and ready!
+INFO:backend.environment.health:Metabase is healthy and ready!
+INFO:backend.agent.runner:Starting agent run against http://localhost:3102 using model gemini-3-flash-preview (viewport: (854, 480))...
+INFO:backend.agent.runner:Starting agent run against http://localhost:3103 using model gemini-3-flash-preview (viewport: (854, 480))...
+INFO:backend.agent.runner:Starting agent run against http://localhost:3101 using model gemini-3-flash-preview (viewport: (854, 480))...
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/181f1cfd-d7d4-4f2f-b569-1c558efdab6c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/9bc5971d-06b2-46ac-8444-f0d55e8e77bd HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/9bc5971d-06b2-46ac-8444-f0d55e8e77bd HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1f6ce37e-6cc8-4428-a8dd-4ee717aff79b HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+ERROR:backend.rollout.runner:[mb_78755e90] Rollout failed at 'agent_execution': Agent exceeded 300s
+Traceback (most recent call last):
+  File "/Users/triansh/Desktop/deeptune-hack/backend/rollout/runner.py", line 269, in execute_rollout
+    agent_out_data = q.get(timeout=AGENT_TIMEOUT)
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/multiprocessing/queues.py", line 112, in get
+    raise Empty
+_queue.Empty
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/triansh/Desktop/deeptune-hack/backend/rollout/runner.py", line 288, in execute_rollout
+    raise TimeoutError(primary_error_message)
+TimeoutError: Agent exceeded 300s
+
+INFO:backend.environment.manager:[mb_78755e90] Destroying environment...
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:backend.environment.manager:[mb_78755e90] Environment destroyed and volumes purged.
+INFO:backend.rollout.runner:[mb_78755e90] problem1 attempt 1 → RolloutStatus.TIMEOUT | reward=None | 330.51s
+INFO:backend.environment.manager:[mb_9bc5971d] Destroying environment...
+INFO:backend.environment.manager:[mb_9bc5971d] Environment destroyed and volumes purged.
+INFO:backend.environment.manager:[mb_9bc5971d] Starting containers (Metabase:3104, PG:3204)...
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:backend.environment.manager:[mb_9bc5971d] Containers started.
+INFO:backend.environment.health:Waiting for Metabase at http://localhost:3104 (timeout=180s)...
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:backend.environment.health:Metabase is healthy and ready!
+INFO:backend.agent.runner:Starting agent run against http://localhost:3104 using model gemini-3-flash-preview (viewport: (854, 480))...
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57181 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/history?status=RUNNING HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/history?status=COMPLETED HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/history?status=FAILED HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/history?status=QUEUED HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+Creating session...
+Started local playwright.
+INFO:backend.environment.manager:[mb_96e11d34] Destroying environment...
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:backend.environment.manager:[mb_96e11d34] Environment destroyed and volumes purged.
+INFO:backend.rollout.runner:[mb_96e11d34] problem1 attempt 1 → RolloutStatus.PASSED | reward=1.0 | 182.29s
+INFO:backend.environment.manager:[mb_1f6ce37e] Destroying environment...
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57220 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/002_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57218 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/001_open_web_browser.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57223 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/003_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57225 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/004_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57227 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/005_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57228 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/006_scroll_at.png HTTP/1.1" 200 OK
+INFO:backend.environment.manager:[mb_1f6ce37e] Environment destroyed and volumes purged.
+INFO:backend.environment.manager:[mb_1f6ce37e] Starting containers (Metabase:3101, PG:3201)...
+INFO:     127.0.0.1:57218 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/007_scroll_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57220 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/008_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57225 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/009_wait_5_seconds.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57227 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/010_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57223 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/012_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57228 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/011_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57218 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/013_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57220 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/014_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57225 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/015_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57223 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/016_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57227 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/017_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57228 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/018_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57220 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/019_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57218 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/020_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57225 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/021_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/181f1cfd-d7d4-4f2f-b569-1c558efdab6c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/181f1cfd-d7d4-4f2f-b569-1c558efdab6c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:backend.environment.manager:[mb_1f6ce37e] Containers started.
+INFO:backend.environment.health:Waiting for Metabase at http://localhost:3101 (timeout=180s)...
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/9bc5971d-06b2-46ac-8444-f0d55e8e77bd HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/9bc5971d-06b2-46ac-8444-f0d55e8e77bd HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/9bc5971d-06b2-46ac-8444-f0d55e8e77bd HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/9bc5971d-06b2-46ac-8444-f0d55e8e77bd HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1f6ce37e-6cc8-4428-a8dd-4ee717aff79b HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1f6ce37e-6cc8-4428-a8dd-4ee717aff79b HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57251 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/002_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57257 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/001_open_web_browser.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57258 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/004_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57259 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/003_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57260 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/005_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57261 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/006_scroll_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57259 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/007_scroll_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57261 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/008_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57260 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/009_wait_5_seconds.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57257 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/011_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57258 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/010_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57251 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/012_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57258 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/014_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57251 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/013_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57257 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/015_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57259 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/018_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57260 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/016_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57261 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/017_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57251 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/019_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57257 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/020_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57259 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/021_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:backend.environment.health:Metabase is healthy and ready!
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:backend.agent.runner:Starting agent run against http://localhost:3101 using model gemini-3-flash-preview (viewport: (854, 480))...
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57289 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+Creating session...
+Started local playwright.
+INFO:backend.environment.manager:[mb_181f1cfd] Destroying environment...
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:backend.environment.manager:[mb_181f1cfd] Environment destroyed and volumes purged.
+INFO:backend.rollout.runner:[mb_181f1cfd] problem1 attempt 3 → RolloutStatus.PASSED | reward=1.0 | 211.24s
+INFO:backend.environment.manager:[mb_e35a76f1] Destroying environment...
+INFO:backend.environment.manager:[mb_e35a76f1] Environment destroyed and volumes purged.
+INFO:backend.environment.manager:[mb_e35a76f1] Starting containers (Metabase:3102, PG:3202)...
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:backend.environment.manager:[mb_e35a76f1] Containers started.
+INFO:backend.environment.health:Waiting for Metabase at http://localhost:3102 (timeout=180s)...
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57331 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57354 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:backend.environment.health:Metabase is healthy and ready!
+INFO:backend.agent.runner:Starting agent run against http://localhost:3102 using model gemini-3-flash-preview (viewport: (854, 480))...
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57382 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57398 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57442 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57473 - "GET /api/jobs/history HTTP/1.1" 200 OK
+ERROR:backend.rollout.runner:[mb_cf9ea918] Rollout failed at 'agent_execution': Agent exceeded 300s
+Traceback (most recent call last):
+  File "/Users/triansh/Desktop/deeptune-hack/backend/rollout/runner.py", line 269, in execute_rollout
+    agent_out_data = q.get(timeout=AGENT_TIMEOUT)
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/multiprocessing/queues.py", line 112, in get
+    raise Empty
+_queue.Empty
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/triansh/Desktop/deeptune-hack/backend/rollout/runner.py", line 288, in execute_rollout
+    raise TimeoutError(primary_error_message)
+TimeoutError: Agent exceeded 300s
+
+INFO:backend.environment.manager:[mb_cf9ea918] Destroying environment...
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:backend.environment.manager:[mb_cf9ea918] Environment destroyed and volumes purged.
+INFO:backend.rollout.runner:[mb_cf9ea918] problem1 attempt 2 → RolloutStatus.TIMEOUT | reward=None | 318.03s
+INFO:backend.environment.manager:[mb_e05d3cfe] Destroying environment...
+INFO:backend.environment.manager:[mb_e05d3cfe] Environment destroyed and volumes purged.
+INFO:backend.environment.manager:[mb_e05d3cfe] Starting containers (Metabase:3100, PG:3200)...
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57486 - "GET /api/jobs/history HTTP/1.1" 200 OK
+Creating session...
+Started local playwright.
+Safety service requires explicit confirmation!
+I am about to save the current question. This action will modify the browser's data. Do you want to continue?
+Do you wish to proceed? [Yes]/[No]
+ERROR:backend.agent.runner:Agent loop error: EOF when reading a line
+ERROR:backend.rollout.runner:[mb_1c8de9c3] Agent error from process: EOF when reading a line
+Traceback (most recent call last):
+  File "/Users/triansh/Desktop/deeptune-hack/backend/rollout/runner.py", line 60, in _run_agent_in_process
+    agent_out = agent_runner.run(task_prompt, metabase_url, screen_size)
+  File "/Users/triansh/Desktop/deeptune-hack/backend/agent/runner.py", line 74, in run
+    raise e
+  File "/Users/triansh/Desktop/deeptune-hack/backend/agent/runner.py", line 68, in run
+    agent.agent_loop()
+    ~~~~~~~~~~~~~~~~^^
+  File "/Users/triansh/Desktop/deeptune-hack/computer-use-preview/agent.py", line 579, in agent_loop
+    status = self.run_one_iteration()
+  File "/Users/triansh/Desktop/deeptune-hack/computer-use-preview/agent.py", line 479, in run_one_iteration
+    decision = self._get_safety_confirmation(safety)
+  File "/Users/triansh/Desktop/deeptune-hack/computer-use-preview/agent.py", line 571, in _get_safety_confirmation
+    decision = input("Do you wish to proceed? [Yes]/[No]\n")
+EOFError: EOF when reading a line
+
+ERROR:backend.rollout.runner:[mb_1c8de9c3] Agent queue get error: EOF when reading a line
+Traceback (most recent call last):
+  File "/Users/triansh/Desktop/deeptune-hack/backend/rollout/runner.py", line 275, in execute_rollout
+    raise RuntimeError(primary_error_message)
+RuntimeError: EOF when reading a line
+
+ERROR:backend.rollout.runner:[mb_1c8de9c3] Rollout failed at 'agent_execution': EOF when reading a line
+Traceback (most recent call last):
+  File "/Users/triansh/Desktop/deeptune-hack/backend/rollout/runner.py", line 275, in execute_rollout
+    raise RuntimeError(primary_error_message)
+RuntimeError: EOF when reading a line
+
+INFO:backend.environment.manager:[mb_1c8de9c3] Destroying environment...
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:backend.environment.manager:[mb_1c8de9c3] Environment destroyed and volumes purged.
+INFO:backend.rollout.runner:[mb_1c8de9c3] problem1 attempt 2 → RolloutStatus.ERROR | reward=None | 277.18s
+INFO:backend.environment.manager:[mb_a6060097] Destroying environment...
+INFO:backend.environment.manager:[mb_a6060097] Environment destroyed and volumes purged.
+INFO:backend.environment.manager:[mb_a6060097] Starting containers (Metabase:3103, PG:3203)...
+INFO:backend.environment.manager:[mb_e05d3cfe] Containers started.
+INFO:backend.environment.health:Waiting for Metabase at http://localhost:3100 (timeout=180s)...
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:backend.environment.manager:[mb_a6060097] Containers started.
+INFO:backend.environment.health:Waiting for Metabase at http://localhost:3103 (timeout=180s)...
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57512 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:backend.environment.health:Metabase is healthy and ready!
+INFO:backend.agent.runner:Starting agent run against http://localhost:3100 using model gemini-3-flash-preview (viewport: (854, 480))...
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:backend.environment.health:Metabase is healthy and ready!
+INFO:backend.agent.runner:Starting agent run against http://localhost:3103 using model gemini-3-flash-preview (viewport: (854, 480))...
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57573 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57599 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57620 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57646 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57667 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57692 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57713 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57734 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+ERROR:backend.rollout.runner:[mb_9bc5971d] Rollout failed at 'agent_execution': Agent exceeded 300s
+Traceback (most recent call last):
+  File "/Users/triansh/Desktop/deeptune-hack/backend/rollout/runner.py", line 269, in execute_rollout
+    agent_out_data = q.get(timeout=AGENT_TIMEOUT)
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/multiprocessing/queues.py", line 112, in get
+    raise Empty
+_queue.Empty
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/triansh/Desktop/deeptune-hack/backend/rollout/runner.py", line 288, in execute_rollout
+    raise TimeoutError(primary_error_message)
+TimeoutError: Agent exceeded 300s
+
+INFO:backend.environment.manager:[mb_9bc5971d] Destroying environment...
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:backend.environment.manager:[mb_9bc5971d] Environment destroyed and volumes purged.
+INFO:backend.rollout.runner:[mb_9bc5971d] problem2 attempt 1 → RolloutStatus.TIMEOUT | reward=None | 315.17s
+INFO:backend.environment.manager:[mb_a44d469f] Destroying environment...
+INFO:backend.environment.manager:[mb_a44d469f] Environment destroyed and volumes purged.
+INFO:backend.environment.manager:[mb_a44d469f] Starting containers (Metabase:3104, PG:3204)...
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/181f1cfd-d7d4-4f2f-b569-1c558efdab6c HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57747 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/181f1cfd-d7d4-4f2f-b569-1c558efdab6c/screenshots/001_open_web_browser.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57748 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/181f1cfd-d7d4-4f2f-b569-1c558efdab6c/screenshots/002_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57751 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/181f1cfd-d7d4-4f2f-b569-1c558efdab6c/screenshots/003_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57753 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/181f1cfd-d7d4-4f2f-b569-1c558efdab6c/screenshots/004_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57755 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/181f1cfd-d7d4-4f2f-b569-1c558efdab6c/screenshots/005_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57756 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/181f1cfd-d7d4-4f2f-b569-1c558efdab6c/screenshots/006_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57748 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/181f1cfd-d7d4-4f2f-b569-1c558efdab6c/screenshots/007_scroll_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57747 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/181f1cfd-d7d4-4f2f-b569-1c558efdab6c/screenshots/008_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57756 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/181f1cfd-d7d4-4f2f-b569-1c558efdab6c/screenshots/009_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57755 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/181f1cfd-d7d4-4f2f-b569-1c558efdab6c/screenshots/010_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57751 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/181f1cfd-d7d4-4f2f-b569-1c558efdab6c/screenshots/012_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57753 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/181f1cfd-d7d4-4f2f-b569-1c558efdab6c/screenshots/011_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57748 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/181f1cfd-d7d4-4f2f-b569-1c558efdab6c/screenshots/014_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57747 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/181f1cfd-d7d4-4f2f-b569-1c558efdab6c/screenshots/013_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57755 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/181f1cfd-d7d4-4f2f-b569-1c558efdab6c/screenshots/015_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57751 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/181f1cfd-d7d4-4f2f-b569-1c558efdab6c/screenshots/016_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57753 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/181f1cfd-d7d4-4f2f-b569-1c558efdab6c/screenshots/017_scroll_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57756 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/181f1cfd-d7d4-4f2f-b569-1c558efdab6c/screenshots/018_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57755 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/181f1cfd-d7d4-4f2f-b569-1c558efdab6c/screenshots/019_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57747 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/181f1cfd-d7d4-4f2f-b569-1c558efdab6c/screenshots/020_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57753 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/181f1cfd-d7d4-4f2f-b569-1c558efdab6c/screenshots/023_scroll_document.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57748 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/181f1cfd-d7d4-4f2f-b569-1c558efdab6c/screenshots/022_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57756 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/181f1cfd-d7d4-4f2f-b569-1c558efdab6c/screenshots/021_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57751 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/181f1cfd-d7d4-4f2f-b569-1c558efdab6c/screenshots/024_scroll_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/9bc5971d-06b2-46ac-8444-f0d55e8e77bd HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/9bc5971d-06b2-46ac-8444-f0d55e8e77bd HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1f6ce37e-6cc8-4428-a8dd-4ee717aff79b HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1f6ce37e-6cc8-4428-a8dd-4ee717aff79b HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e35a76f1-ea03-48e4-b0d7-04697fddea70 HTTP/1.1" 200 OK
+INFO:backend.environment.manager:[mb_a44d469f] Containers started.
+INFO:backend.environment.health:Waiting for Metabase at http://localhost:3104 (timeout=180s)...
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/e05d3cfe-aea3-4071-bfc2-457140e85025 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/e05d3cfe-aea3-4071-bfc2-457140e85025 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57771 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/001_open_web_browser.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57776 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/006_scroll_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57772 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/002_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57773 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/004_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57774 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/005_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57775 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/003_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57775 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/007_scroll_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57776 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/008_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57771 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/010_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57772 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/009_wait_5_seconds.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57773 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/012_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57774 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/011_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57771 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/013_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57773 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/014_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57774 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/017_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57776 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/016_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57775 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/018_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57772 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/015_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57774 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/019_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57771 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/020_type_text_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57775 - "GET /api/artifacts/8d72eaca-c868-4a4f-a501-2026ba306e66/96e11d34-12b7-4ace-b862-6fa2715fe715/screenshots/021_click_at.png HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/96e11d34-12b7-4ace-b862-6fa2715fe715 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57784 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:backend.environment.health:Metabase is healthy and ready!
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:backend.agent.runner:Starting agent run against http://localhost:3104 using model gemini-3-flash-preview (viewport: (854, 480))...
+Creating session...
+Started local playwright.
+INFO:backend.environment.manager:[mb_a6060097] Destroying environment...
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:backend.environment.manager:[mb_a6060097] Environment destroyed and volumes purged.
+INFO:backend.rollout.runner:[mb_a6060097] problem3 attempt 2 → RolloutStatus.PASSED | reward=1.0 | 150.73s
+INFO:backend.environment.manager:[mb_078b3c93] Destroying environment...
+INFO:backend.environment.manager:[mb_078b3c93] Environment destroyed and volumes purged.
+INFO:backend.environment.manager:[mb_078b3c93] Starting containers (Metabase:3103, PG:3203)...
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57835 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:backend.environment.manager:[mb_078b3c93] Containers started.
+INFO:backend.environment.health:Waiting for Metabase at http://localhost:3103 (timeout=180s)...
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:backend.environment.health:Metabase is healthy and ready!
+INFO:backend.agent.runner:Starting agent run against http://localhost:3103 using model gemini-3-flash-preview (viewport: (854, 480))...
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57873 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57904 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57915 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57934 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+Creating session...
+Started local playwright.
+Safety service requires explicit confirmation!
+I am about to sign out of the application. Do you want me to continue?
+Do you wish to proceed? [Yes]/[No]
+INFO:     127.0.0.1:57958 - "GET /api/jobs/history HTTP/1.1" 200 OK
+ERROR:backend.agent.runner:Agent loop error: EOF when reading a line
+ERROR:backend.rollout.runner:[mb_e05d3cfe] Agent error from process: EOF when reading a line
+Traceback (most recent call last):
+  File "/Users/triansh/Desktop/deeptune-hack/backend/rollout/runner.py", line 60, in _run_agent_in_process
+    agent_out = agent_runner.run(task_prompt, metabase_url, screen_size)
+  File "/Users/triansh/Desktop/deeptune-hack/backend/agent/runner.py", line 74, in run
+    raise e
+  File "/Users/triansh/Desktop/deeptune-hack/backend/agent/runner.py", line 68, in run
+    agent.agent_loop()
+    ~~~~~~~~~~~~~~~~^^
+  File "/Users/triansh/Desktop/deeptune-hack/computer-use-preview/agent.py", line 579, in agent_loop
+    status = self.run_one_iteration()
+  File "/Users/triansh/Desktop/deeptune-hack/computer-use-preview/agent.py", line 479, in run_one_iteration
+    decision = self._get_safety_confirmation(safety)
+  File "/Users/triansh/Desktop/deeptune-hack/computer-use-preview/agent.py", line 571, in _get_safety_confirmation
+    decision = input("Do you wish to proceed? [Yes]/[No]\n")
+EOFError: EOF when reading a line
+
+ERROR:backend.rollout.runner:[mb_e05d3cfe] Agent queue get error: EOF when reading a line
+Traceback (most recent call last):
+  File "/Users/triansh/Desktop/deeptune-hack/backend/rollout/runner.py", line 275, in execute_rollout
+    raise RuntimeError(primary_error_message)
+RuntimeError: EOF when reading a line
+
+ERROR:backend.rollout.runner:[mb_e05d3cfe] Rollout failed at 'agent_execution': EOF when reading a line
+Traceback (most recent call last):
+  File "/Users/triansh/Desktop/deeptune-hack/backend/rollout/runner.py", line 275, in execute_rollout
+    raise RuntimeError(primary_error_message)
+RuntimeError: EOF when reading a line
+
+INFO:backend.environment.manager:[mb_e05d3cfe] Destroying environment...
+INFO:     127.0.0.1:57963 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:backend.environment.manager:[mb_e05d3cfe] Environment destroyed and volumes purged.
+INFO:backend.rollout.runner:[mb_e05d3cfe] problem3 attempt 1 → RolloutStatus.ERROR | reward=None | 223.84s
+INFO:backend.environment.manager:[mb_d7df4e8a] Destroying environment...
+INFO:backend.environment.manager:[mb_d7df4e8a] Environment destroyed and volumes purged.
+INFO:backend.environment.manager:[mb_d7df4e8a] Starting containers (Metabase:3100, PG:3200)...
+ERROR:backend.rollout.runner:[mb_1f6ce37e] Rollout failed at 'agent_execution': Agent exceeded 300s
+Traceback (most recent call last):
+  File "/Users/triansh/Desktop/deeptune-hack/backend/rollout/runner.py", line 269, in execute_rollout
+    agent_out_data = q.get(timeout=AGENT_TIMEOUT)
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/multiprocessing/queues.py", line 112, in get
+    raise Empty
+_queue.Empty
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/triansh/Desktop/deeptune-hack/backend/rollout/runner.py", line 288, in execute_rollout
+    raise TimeoutError(primary_error_message)
+TimeoutError: Agent exceeded 300s
+
+INFO:backend.environment.manager:[mb_1f6ce37e] Destroying environment...
+INFO:backend.environment.manager:[mb_1f6ce37e] Environment destroyed and volumes purged.
+INFO:backend.rollout.runner:[mb_1f6ce37e] problem2 attempt 2 → RolloutStatus.TIMEOUT | reward=None | 315.08s
+INFO:backend.environment.manager:[mb_cb5f93bd] Destroying environment...
+INFO:backend.environment.manager:[mb_cb5f93bd] Environment destroyed and volumes purged.
+INFO:backend.environment.manager:[mb_cb5f93bd] Starting containers (Metabase:3101, PG:3201)...
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:backend.environment.manager:[mb_d7df4e8a] Containers started.
+INFO:backend.environment.health:Waiting for Metabase at http://localhost:3100 (timeout=180s)...
+INFO:backend.environment.manager:[mb_cb5f93bd] Containers started.
+INFO:backend.environment.health:Waiting for Metabase at http://localhost:3101 (timeout=180s)...
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:57992 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:backend.environment.health:Metabase is healthy and ready!
+INFO:backend.agent.runner:Starting agent run against http://localhost:3100 using model gemini-3-flash-preview (viewport: (854, 480))...
+INFO:backend.environment.health:Metabase is healthy and ready!
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:backend.agent.runner:Starting agent run against http://localhost:3101 using model gemini-3-flash-preview (viewport: (854, 480))...
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58057 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:58065 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+ERROR:backend.rollout.runner:[mb_e35a76f1] Rollout failed at 'agent_execution': Agent exceeded 300s
+Traceback (most recent call last):
+  File "/Users/triansh/Desktop/deeptune-hack/backend/rollout/runner.py", line 269, in execute_rollout
+    agent_out_data = q.get(timeout=AGENT_TIMEOUT)
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/multiprocessing/queues.py", line 112, in get
+    raise Empty
+_queue.Empty
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/Users/triansh/Desktop/deeptune-hack/backend/rollout/runner.py", line 288, in execute_rollout
+    raise TimeoutError(primary_error_message)
+TimeoutError: Agent exceeded 300s
+
+INFO:backend.environment.manager:[mb_e35a76f1] Destroying environment...
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:backend.environment.manager:[mb_e35a76f1] Environment destroyed and volumes purged.
+INFO:backend.rollout.runner:[mb_e35a76f1] problem2 attempt 3 → RolloutStatus.TIMEOUT | reward=None | 318.07s
+INFO:backend.environment.manager:[mb_56c7e617] Destroying environment...
+INFO:backend.environment.manager:[mb_56c7e617] Environment destroyed and volumes purged.
+INFO:backend.environment.manager:[mb_56c7e617] Starting containers (Metabase:3102, PG:3202)...
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56821 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK
+INFO:backend.environment.manager:[mb_56c7e617] Containers started.
+INFO:backend.environment.health:Waiting for Metabase at http://localhost:3102 (timeout=180s)...
+INFO:     127.0.0.1:56821 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66 HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/jobs/8d72eaca-c868-4a4f-a501-2026ba306e66/tasks HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56823 - "GET /api/rollouts/1c8de9c3-7c25-4213-a480-3fefa0db70a3 HTTP/1.1" 200 OK

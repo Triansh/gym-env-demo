@@ -458,64 +458,117 @@ class SQLiteStore:
         }
 
     def cancel_job(self, job_id: str) -> bool:
-        job = self.get_job(job_id)
-        if not job:
-            return False
-        if job.status not in (JobStatus.QUEUED, JobStatus.RUNNING):
-            return False
-        job.status = JobStatus.CANCELLED
-        job.completed_at = datetime.utcnow().isoformat()
-        self.save_job(job)
+        with self._write_lock:
+            job = self.get_job(job_id)
+            if not job:
+                return False
+            if job.status not in (JobStatus.QUEUED, JobStatus.RUNNING):
+                return False
+            job.status = JobStatus.CANCELLED
+            job.completed_at = datetime.utcnow().isoformat()
+            self.save_job(job)
+    
+            for r in self.get_rollouts_for_job(job_id):
+                if not r.is_terminal:
+                    r.status = RolloutStatus.CANCELLED
+                    r.termination_reason = "job_cancelled"
+                    r.completed_at = datetime.utcnow().isoformat()
+                    self.save_rollout(r)
+    
+            self._recompute_job_progress(job_id)
+            return True
 
-        for r in self.get_rollouts_for_job(job_id):
-            if not r.is_terminal:
-                r.status = RolloutStatus.CANCELLED
-                r.termination_reason = "job_cancelled"
-                r.completed_at = datetime.utcnow().isoformat()
-                self.save_rollout(r)
-
-        self._recompute_job_progress(job_id)
-        return True
+    def recover_orphaned_rollouts(self) -> None:
+        """
+        Sweep the database for any rollouts in STARTING or RUNNING state
+        and mark them as ERROR (orphaned by crash).
+        Then recompute job stats for affected jobs.
+        """
+        with self._write_lock:
+            rows = self._conn.execute(
+                "SELECT rollout_id, job_id, status FROM rollouts WHERE status IN (?, ?)",
+                (RolloutStatus.STARTING.value if hasattr(RolloutStatus.STARTING, 'value') else "STARTING", 
+                 RolloutStatus.RUNNING.value if hasattr(RolloutStatus.RUNNING, 'value') else "RUNNING")
+            ).fetchall()
+            
+            affected_jobs = set()
+            now_str = datetime.utcnow().isoformat()
+            err_type = "system_crash"
+            err_status = RolloutStatus.ERROR.value if hasattr(RolloutStatus.ERROR, 'value') else "ERROR"
+            
+            for row in rows:
+                r_id = row['rollout_id']
+                r_job_id = row['job_id']
+                self._conn.execute(
+                    """
+                    UPDATE rollouts SET
+                        status = ?,
+                        error_type = ?,
+                        termination_reason = ?,
+                        completed_at = ?
+                    WHERE rollout_id = ?
+                    """,
+                    (err_status, err_type, "orphaned_by_crash", now_str, r_id)
+                )
+                affected_jobs.add(r_job_id)
+                
+            self._conn.commit()
+            
+            for j_id in affected_jobs:
+                self._recompute_job_progress(j_id)
+            
+            if rows:
+                logger.info(f"Recovered {len(rows)} orphaned rollouts across {len(affected_jobs)} jobs.")
 
     def update_rollout(self, rollout_id: str, **kwargs) -> None:
-        rollout = self.get_rollout(rollout_id)
-        if not rollout:
-            logger.warning(f"update_rollout: rollout {rollout_id} not found")
-            return
+        with self._write_lock:
+            rollout = self.get_rollout(rollout_id)
+            if not rollout:
+                logger.warning(f"update_rollout: rollout {rollout_id} not found")
+                return
 
-        for k, v in kwargs.items():
-            if hasattr(rollout, k):
-                setattr(rollout, k, v)
+            new_status = kwargs.get("status")
+            if rollout.is_terminal and new_status and new_status != rollout.status:
+                logger.warning(f"ignoring status update to {new_status} for terminal rollout {rollout_id} ({rollout.status})")
+                kwargs.pop("status", None)
+                kwargs.pop("termination_reason", None)
+                kwargs.pop("error_type", None)
+                kwargs.pop("reward", None)
 
-        self.save_rollout(rollout)
-        self._recompute_job_progress(rollout.job_id)
+            for k, v in kwargs.items():
+                if hasattr(rollout, k):
+                    setattr(rollout, k, v)
+    
+            self.save_rollout(rollout)
+            self._recompute_job_progress(rollout.job_id)
 
     def _recompute_job_progress(self, job_id: str) -> None:
-        job = self.get_job(job_id)
-        if not job:
-            return
-
-        rollouts = self.get_rollouts_for_job(job_id)
-        passed = sum(1 for r in rollouts if r.status == RolloutStatus.PASSED)
-        failed = sum(1 for r in rollouts if r.status == RolloutStatus.FAILED)
-        errors = sum(1 for r in rollouts if r.status == RolloutStatus.ERROR)
-        timeouts = sum(1 for r in rollouts if r.status == RolloutStatus.TIMEOUT)
-        cancelled = sum(1 for r in rollouts if r.status == RolloutStatus.CANCELLED)
-        completed = passed + failed + errors + timeouts + cancelled
-
-        job.passed = passed
-        job.failed = failed
-        job.errors = errors
-        job.timeouts = timeouts
-        job.completed = completed
-        job.total = len(rollouts)
-
-        if completed == job.total and job.total > 0:
-            if job.status not in (JobStatus.CANCELLED,):
-                job.status = JobStatus.COMPLETED
-                job.completed_at = datetime.utcnow().isoformat()
-        elif job.status == JobStatus.QUEUED and completed > 0:
-            job.status = JobStatus.RUNNING
-            job.started_at = datetime.utcnow().isoformat()
-
-        self.save_job(job)
+        with self._write_lock:
+            job = self.get_job(job_id)
+            if not job:
+                return
+    
+            rollouts = self.get_rollouts_for_job(job_id)
+            passed = sum(1 for r in rollouts if r.status == RolloutStatus.PASSED)
+            failed = sum(1 for r in rollouts if r.status == RolloutStatus.FAILED)
+            errors = sum(1 for r in rollouts if r.status == RolloutStatus.ERROR)
+            timeouts = sum(1 for r in rollouts if r.status == RolloutStatus.TIMEOUT)
+            cancelled = sum(1 for r in rollouts if r.status == RolloutStatus.CANCELLED)
+            completed = passed + failed + errors + timeouts + cancelled
+    
+            job.passed = passed
+            job.failed = failed
+            job.errors = errors
+            job.timeouts = timeouts
+            job.completed = completed
+            job.total = len(rollouts)
+    
+            if completed == job.total and job.total > 0:
+                if job.status not in (JobStatus.CANCELLED,):
+                    job.status = JobStatus.COMPLETED
+                    job.completed_at = datetime.utcnow().isoformat()
+            elif job.status == JobStatus.QUEUED and any(r.status != RolloutStatus.QUEUED for r in rollouts):
+                job.status = JobStatus.RUNNING
+                job.started_at = datetime.utcnow().isoformat()
+    
+            self.save_job(job)

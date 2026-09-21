@@ -28,8 +28,11 @@ COMPLETION:
 
 def build_agent_prompt(task_prompt: str) -> str:
     """Format the task prompt with standard contract rules and credentials."""
-    user = os.environ.get("METABASE_USER", "daksh@deeptune.com")
-    password = os.environ.get("METABASE_PASSWORD", "Daksh@123")
+    user = os.environ.get("METABASE_USER")
+    password = os.environ.get("METABASE_PASSWORD")
+    if not user or not password:
+        raise ValueError("METABASE_USER and METABASE_PASSWORD environment variables must be securely provided.")
+    
     return SYSTEM_PROMPT_TEMPLATE.format(
         task_prompt=task_prompt.strip(),
         metabase_user=user,

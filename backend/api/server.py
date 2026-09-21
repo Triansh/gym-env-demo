@@ -19,7 +19,7 @@ from backend.configs import ARTIFACTS_ROOT, MAX_ATTEMPTS, MAX_CONCURRENT_ROLLOUT
 from backend.jobs import TaskValidationError, create_job, load_and_validate_tasks
 from backend.models import JobStatus, RolloutStatus
 from backend.db import SQLiteStore
-from backend.workers import run_job
+from backend.workers import run_job, JobManager
 
 logger = logging.getLogger("backend.api")
 
@@ -48,11 +48,7 @@ class JobCreateRequest(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
 
-@app.get("/")
-async def serve_index():
-    if FRONTEND_INDEX.exists():
-        return FileResponse(str(FRONTEND_INDEX))
-    return {"message": "Metabase RL Workbench API Server"}
+
 
 
 @app.get("/tasks.json")
@@ -183,7 +179,7 @@ def get_job_tasks_json(job_id: str):
         raise HTTPException(status_code=404, detail="Job not found")
 
     tasks_data = [
-        {"id": t.id, "task": t.prompt, "answer": t.expected_answer}
+        {"id": t.id, "task": t.prompt}
         for t in job.tasks
     ]
     return tasks_data
@@ -309,7 +305,12 @@ def get_rollout_screenshots(rollout_id: str):
 
 @app.on_event("startup")
 async def on_startup():
-    pass
+    store.recover_orphaned_rollouts()
+    JobManager.get_instance(store).start_workers()
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    await JobManager.get_instance(store).shutdown()
 
 
 # ---------------------------------------------------------------------------

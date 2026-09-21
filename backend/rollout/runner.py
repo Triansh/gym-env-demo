@@ -172,8 +172,8 @@ def execute_rollout(rollout_id: str, store, worker_slot: int = 0) -> None:
     task_id = rollout.task_id
     attempt = rollout.attempt_number
 
-    # ---- artifact directory: <job_id>/<task_id>/<attempt>/ --------------
-    artifact_dir = Path(ARTIFACTS_ROOT) / job_id / task_id / str(attempt)
+    # ---- artifact directory: <job_id>/<rollout_id>/ --------------
+    artifact_dir = Path(ARTIFACTS_ROOT) / job_id / rollout_id
     artifact_dir.mkdir(parents=True, exist_ok=True)
 
     # ---- per-rollout file logger ----------------------------------------
@@ -214,12 +214,18 @@ def execute_rollout(rollout_id: str, store, worker_slot: int = 0) -> None:
         )
 
         # ---- load task --------------------------------------------------
-        job_task_file = Path(ARTIFACTS_ROOT) / job_id / "tasks.json"
-        tasks_file_path = str(job_task_file) if job_task_file.exists() else str(DEFAULT_TASKS_FILE)
-        grader = TaskGrader(tasks_file=tasks_file_path)
-        task_data = grader.get_task(task_id)
+        job = store.get_job(job_id)
+        if not job:
+            raise RuntimeError(f"Job '{job_id}' not found in database")
+        
+        task_data = None
+        for t in job.tasks:
+            if t.id == task_id:
+                task_data = {"task": t.prompt, "answer": t.expected_answer}
+                break
+        
         if not task_data:
-            raise RuntimeError(f"Task '{task_id}' not found in {tasks_file_path}")
+            raise RuntimeError(f"Task '{task_id}' not found in Job '{job_id}'")
 
         # ---- environment start ------------------------------------------
         env_manager = EnvironmentManager(
@@ -314,8 +320,9 @@ def execute_rollout(rollout_id: str, store, worker_slot: int = 0) -> None:
         # ---- grading ----------------------------------------------------
         _update(status=RolloutStatus.GRADING)
         try:
+            grader = TaskGrader()
             with ThreadPoolExecutor(max_workers=1) as tpe:
-                fut = tpe.submit(grader.grade, task_id, agent_claim)
+                fut = tpe.submit(grader.grade, task_data["answer"], agent_claim)
                 try:
                     grader_result = fut.result(timeout=GRADER_TIMEOUT)
                 except FuturesTimeout:

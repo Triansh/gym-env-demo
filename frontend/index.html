@@ -429,7 +429,8 @@ async function fetchJobHistory() {
 
     tbody.innerHTML = jobs.map(j => {
       const jobId = j.job_id || j.id;
-      const createdStr = j.created_at ? new Date(j.created_at).toLocaleString() : '—';
+      const createdDate = j.created_at ? new Date(j.created_at + (j.created_at.endsWith('Z') ? '' : 'Z')) : null;
+      const createdStr = createdDate ? createdDate.toUTCString().replace('GMT', 'UTC') : '—';
       const durationStr = j.duration_seconds ? `${j.duration_seconds.toFixed(1)}s` : '—';
       const passRatePct = (j.pass_rate ?? 0).toFixed(1);
       const taskFile = j.task_file || 'tasks.json';
@@ -512,7 +513,7 @@ async function api(path, opts = {}) {
 }
 
 function changeAttempts(delta) {
-  state.attempts = Math.max(1, Math.min(10, state.attempts + delta));
+  state.attempts = Math.max(1, Math.min(state.max_attempts || 10, state.attempts + delta));
   document.getElementById('attempts-val').textContent = state.attempts;
 }
 
@@ -906,20 +907,14 @@ function renderRolloutCard(r) {
     <div class="p-3.5 rounded-lg bg-slate-50 border border-slate-200 flex flex-col gap-2.5 shadow-xs">
       <span class="text-[11px] uppercase font-bold text-slate-600 tracking-wider flex items-center gap-1.5">
         <span class="material-symbols-outlined text-[16px] text-emerald-600">verified</span>
-        Grader Evaluation (Ground Truth vs Predicted)
+        Grader Evaluation (Predicted)
       </span>
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-[11px] font-mono">
+      <div class="grid grid-cols-1 gap-3 text-[11px] font-mono">
         <div class="p-2.5 rounded-md bg-white border border-slate-200 overflow-hidden flex flex-col">
           <div class="text-emerald-700 font-bold mb-1 flex items-center gap-1 shrink-0">
             <span class="material-symbols-outlined text-[14px]">output</span> Predicted Output:
           </div>
-          <pre class="text-slate-800 overflow-auto text-[10px] leading-relaxed whitespace-pre-wrap flex-1 min-h-0">${escHtml(JSON.stringify(r.grader_result.predicted, null, 2))}</pre>
-        </div>
-        <div class="p-2.5 rounded-md bg-white border border-slate-200 overflow-hidden flex flex-col">
-          <div class="text-blue-700 font-bold mb-1 flex items-center gap-1 shrink-0">
-            <span class="material-symbols-outlined text-[14px]">fact_check</span> Ground Truth:
-          </div>
-          <pre class="text-slate-800 overflow-auto text-[10px] leading-relaxed whitespace-pre-wrap flex-1 min-h-0">${escHtml(JSON.stringify(r.grader_result.ground_truth, null, 2))}</pre>
+          <pre class="text-slate-800 overflow-auto text-[10px] leading-relaxed whitespace-pre-wrap flex-1 min-h-0">${escHtml(typeof r.grader_result.predicted !== 'undefined' ? JSON.stringify(r.grader_result.predicted, null, 2) : 'No prediction recorded.')}</pre>
         </div>
       </div>
     </div>
@@ -1020,7 +1015,17 @@ function renderRolloutCard(r) {
 }
 
 async function init() {
-  const savedJobId = getSavedJobId();
+  try {
+    const cfg = await api('/config');
+    state.max_attempts = cfg.max_attempts || 10;
+    state.attempts = state.max_attempts;
+    document.getElementById('attempts-val').textContent = state.attempts;
+  } catch (err) {
+    console.error('Failed to load config:', err);
+    state.max_attempts = 10;
+  }
+
+  const savedJobId = getSavedJobId(); // <-- Correct place
   if (savedJobId) {
     state.currentJob = { job_id: savedJobId };
     await refreshDashboard(false);
@@ -1044,13 +1049,21 @@ document.addEventListener('DOMContentLoaded', init);
 
 function startPolling() {
   stopPolling();
-  state.pollingTimer = setInterval(async () => {
+  state.pollingActive = true;
+  const poll = async () => {
+    if (!state.pollingActive) return;
     await refreshDashboard(true);
-    if (['COMPLETE','COMPLETED','FAILED','CANCELLED'].includes(state.currentJob?.status)) stopPolling();
-  }, 10000);
+    if (['COMPLETE','COMPLETED','FAILED','CANCELLED'].includes(state.currentJob?.status)) {
+       stopPolling();
+       return;
+    }
+    state.pollingTimer = setTimeout(poll, 1500);
+  };
+  state.pollingTimer = setTimeout(poll, 1500);
 }
 function stopPolling() {
-  if (state.pollingTimer) { clearInterval(state.pollingTimer); state.pollingTimer = null; }
+  state.pollingActive = false;
+  if (state.pollingTimer) { clearTimeout(state.pollingTimer); state.pollingTimer = null; }
 }
 
 async function cancelJob() {
@@ -1108,7 +1121,7 @@ function toast(msg, type = 'info') {
 
 function escHtml(str) {
   if (!str) return '';
-  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 }
 </script>
 </body>

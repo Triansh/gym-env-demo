@@ -1,13 +1,10 @@
 services:
   postgres:
     image: postgres:16-alpine
-    container_name: ${COMPOSE_PROJECT_NAME}_postgres
     environment:
       POSTGRES_DB: root_db
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
     volumes:
       - ./metabase_envdata.sql:/docker-entrypoint-initdb.d/metabase_envdata.dump:ro
       - ./restore_db.sh:/docker-entrypoint-initdb.d/01_restore.sh:ro
@@ -20,7 +17,6 @@ services:
 
   metabase:
     image: metabase/metabase:v0.54.3
-    container_name: ${COMPOSE_PROJECT_NAME}_metabase
     ports:
       - "${METABASE_PORT:-3000}:3000"
     environment:

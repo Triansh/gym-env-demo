@@ -19,83 +19,80 @@ from backend.configs import MAX_CONCURRENT_ROLLOUTS
 
 logger = logging.getLogger(__name__)
 
+class JobManager:
+    _instance = None
+    
+    def __init__(self, store: SQLiteStore):
+        self.store = store
+        self.queue = asyncio.Queue()
+        self.executor = ThreadPoolExecutor(max_workers=MAX_CONCURRENT_ROLLOUTS, thread_name_prefix="rollout-worker")
+        self.workers = []
 
-async def _worker(queue: asyncio.Queue, store: SQLiteStore, slot: int, executor: ThreadPoolExecutor) -> None:
-    """A single worker that drains rollouts from the queue until exhausted."""
-    while True:
-        try:
-            rollout_id: str = await queue.get()
-        except asyncio.CancelledError:
-            break
+    @classmethod
+    def get_instance(cls, store: SQLiteStore = None) -> 'JobManager':
+        if cls._instance is None:
+            if store is None:
+                raise ValueError("Store must be provided for initial initialization")
+            cls._instance = cls(store)
+        return cls._instance
 
-        try:
-            rollout = store.get_rollout(rollout_id)
-            if rollout is None:
-                logger.warning(f"Worker[{slot}]: rollout {rollout_id} not found, skipping")
-                continue
+    def start_workers(self):
+        for i in range(MAX_CONCURRENT_ROLLOUTS):
+            w = asyncio.create_task(self._worker(i))
+            self.workers.append(w)
+        logger.info(f"Started {MAX_CONCURRENT_ROLLOUTS} global rollout workers.")
 
-            job = store.get_job(rollout.job_id)
-            if job is not None and (job.status == JobStatus.CANCELLED or job.status == "CANCELLED"):
-                logger.info(f"Worker[{slot}]: rollout {rollout_id} skipped — job cancelled")
-                continue
+    async def shutdown(self):
+        for w in self.workers:
+            w.cancel()
+        await asyncio.gather(*self.workers, return_exceptions=True)
+        self.executor.shutdown(wait=True)
+        logger.info("Global JobManager shut down completely.")
 
-            # execute_rollout is blocking (Playwright + Docker); run in thread pool.
-            # Pass worker slot so the runner assigns a unique port.
-            from backend.rollout.runner import execute_rollout
-            loop = asyncio.get_event_loop()
-            await loop.run_in_executor(executor, execute_rollout, rollout_id, store, slot)
-
-        except Exception as exc:
-            # Exception boundary: one rollout failure must never kill sibling workers.
-            logger.error(f"Worker[{slot}]: unhandled exception for rollout {rollout_id}: {exc}", exc_info=True)
+    async def _worker(self, slot: int):
+        while True:
             try:
-                from datetime import datetime
-                from backend.models import ErrorType
-                store.update_rollout(
-                    rollout_id,
-                    status=RolloutStatus.ERROR,
-                    error_type=ErrorType.AGENT_ERROR,
-                    error_message=str(exc),
-                    error_stage="worker",
-                    completed_at=datetime.utcnow().isoformat(),
-                    termination_reason="worker_exception",
-                )
-            except Exception as store_exc:
-                logger.error(f"Worker[{slot}]: could not update rollout after exception: {store_exc}")
-        finally:
-            queue.task_done()
+                rollout_id: str = await self.queue.get()
+            except asyncio.CancelledError:
+                break
+
+            try:
+                rollout = self.store.get_rollout(rollout_id)
+                if rollout is None:
+                    continue
+
+                job = self.store.get_job(rollout.job_id)
+                if job is not None and (job.status == JobStatus.CANCELLED or job.status == "CANCELLED"):
+                    logger.info(f"Worker[{slot}]: rollout {rollout_id} skipped — job cancelled")
+                    continue
+
+                # execute_rollout is blocking; run in thread pool.
+                from backend.rollout.runner import execute_rollout
+                loop = asyncio.get_event_loop()
+                await loop.run_in_executor(self.executor, execute_rollout, rollout_id, self.store, slot)
+
+            except Exception as exc:
+                logger.error(f"Worker[{slot}]: unhandled exception for rollout {rollout_id}: {exc}", exc_info=True)
+                try:
+                    from datetime import datetime
+                    from backend.models import ErrorType
+                    self.store.update_rollout(
+                        rollout_id,
+                        status=RolloutStatus.ERROR,
+                        error_type=ErrorType.AGENT_ERROR,
+                        error_message=str(exc),
+                        error_stage="worker",
+                        completed_at=datetime.utcnow().isoformat(),
+                        termination_reason="worker_exception",
+                    )
+                except Exception as store_exc:
+                    logger.error(f"Worker[{slot}]: could not update rollout after exception: {store_exc}")
+            finally:
+                self.queue.task_done()
 
 
 async def run_job(job: Job, rollouts: List[Rollout], store: SQLiteStore) -> None:
-    """
-    Populate the queue with rollout IDs and spin up MAX_CONCURRENT_ROLLOUTS workers.
-    Returns after all rollouts have been processed.
-    Runs as an asyncio background task.
-
-    Uses a dedicated ThreadPoolExecutor sized to the worker count so that
-    blocking rollout threads are isolated from the default executor and
-    cannot starve the asyncio event loop's own thread pool.
-    """
-    queue: asyncio.Queue = asyncio.Queue()
+    manager = JobManager.get_instance(store)
     for rollout in rollouts:
-        await queue.put(rollout.id)
-
-    n_workers = min(MAX_CONCURRENT_ROLLOUTS, len(rollouts))
-
-    # Use a dedicated, bounded ThreadPoolExecutor for this job.
-    # This prevents SQLite WAL contention by ensuring at most n_workers
-    # threads ever touch the database concurrently, and scopes the threads
-    # tightly to this job's lifetime.
-    with ThreadPoolExecutor(max_workers=n_workers, thread_name_prefix=f"rollout-{job.id[:8]}") as executor:
-        workers = [
-            asyncio.create_task(_worker(queue, store, slot=i, executor=executor))
-            for i in range(n_workers)
-        ]
-
-        await queue.join()
-
-        for w in workers:
-            w.cancel()
-        await asyncio.gather(*workers, return_exceptions=True)
-
-    logger.info(f"Job {job.id} finished — all {len(rollouts)} rollouts processed")
+        await manager.queue.put(rollout.id)
+    logger.info(f"Job {job.id} enqueued {len(rollouts)} rollouts to global pool")

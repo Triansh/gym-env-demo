@@ -35,7 +35,7 @@ GRADER_TIMEOUT = int(os.environ.get("GRADER_TIMEOUT", "30"))  # Seconds for grad
 
 # Benchmark / Rollout Execution Settings
 DEFAULT_TASKS_FILE = Path(os.environ.get("TASKS_FILE", str(BACKEND_DIR / "tasks.json")))
-DEFAULT_ROLLOUT_TIMEOUT = int(os.environ.get("ROLLOUT_TIMEOUT", "300"))  # Seconds per rollout
+DEFAULT_ROLLOUT_TIMEOUT = int(os.environ.get("ROLLOUT_TIMEOUT", "400"))  # Seconds per rollout
 
 # API Server Settings
 MAX_WORKERS = int(os.environ.get("MAX_WORKERS", "4"))

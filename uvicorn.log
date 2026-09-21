@@ -5,3 +5,15 @@ INFO:     Started server process [33850]
 INFO:     Waiting for application startup.
 INFO:     Application startup complete.
 INFO:     127.0.0.1:52437 - "GET /api/jobs/history HTTP/1.1" 200 OK
+INFO:     127.0.0.1:52785 - "GET /api/jobs/2b3bd4d9-0b1a-4128-8ffc-c6b316493c24/tasks HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52787 - "GET /api/jobs/2b3bd4d9-0b1a-4128-8ffc-c6b316493c24 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52894 - "GET /api/jobs/2b3bd4d9-0b1a-4128-8ffc-c6b316493c24 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52895 - "GET /api/jobs/2b3bd4d9-0b1a-4128-8ffc-c6b316493c24/tasks HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52964 - "GET /api/jobs/2b3bd4d9-0b1a-4128-8ffc-c6b316493c24 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52965 - "GET /api/jobs/2b3bd4d9-0b1a-4128-8ffc-c6b316493c24/tasks HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52985 - "GET /api/jobs/2b3bd4d9-0b1a-4128-8ffc-c6b316493c24 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:52986 - "GET /api/jobs/2b3bd4d9-0b1a-4128-8ffc-c6b316493c24/tasks HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53010 - "GET /api/jobs/2b3bd4d9-0b1a-4128-8ffc-c6b316493c24 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53011 - "GET /api/jobs/2b3bd4d9-0b1a-4128-8ffc-c6b316493c24/tasks HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53029 - "GET /api/jobs/2b3bd4d9-0b1a-4128-8ffc-c6b316493c24 HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:53030 - "GET /api/jobs/2b3bd4d9-0b1a-4128-8ffc-c6b316493c24/tasks HTTP/1.1" 404 Not Found
